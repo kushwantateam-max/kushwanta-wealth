@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "505474542383",
+    "project_id": "kushwanta-wealth",
+    "storage_bucket": "kushwanta-wealth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:505474542383:android:838ab821ba346520f94fda",
+        "android_client_info": {
+          "package_name": "com.aistudio.koshvanta.cashmgr"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "505474542383-vfs77nsjvcfn8rvrl54s294aqp24ceg3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi1BNZlI_SkbUfYHRQmX5zmwQiKs1gfwU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "505474542383-vfs77nsjvcfn8rvrl54s294aqp24ceg3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Koshvanta",
+  "description": "Smart Cash & Expense Manager with real-time financial tracking, multi-currency wallets, interactive analytics, and smart budget limits.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

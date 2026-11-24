@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushwanta — Privacy Policy &amp; Disclaimer</title>
+  <style>
+    :root {
+      --bg: #0B0C10;
+      --surface: #131720;
+      --surface-soft: #181D29;
+      --border: rgba(0, 255, 204, 0.16);
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --accent: #00FFCC;
+      --gold: #FFD700;
+      --badge-bg: rgba(0, 255, 204, 0.10);
+      --badge-border: rgba(0, 255, 204, 0.28);
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #E8EEF5;
+        --surface: #FFFFFF;
+        --surface-soft: #F8FAFC;
+        --border: #CBD5E1;
+        --text: #0F172A;
+        --muted: #475569;
+        --accent: #00695C;
+        --gold: #B45309;
+        --badge-bg: rgba(0, 105, 92, 0.08);
+        --badge-border: rgba(0, 105, 92, 0.24);
+        --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      }
+    }
+
+    body.light-theme {
+      --bg: #E8EEF5;
+      --surface: #FFFFFF;
+      --surface-soft: #F8FAFC;
+      --border: #CBD5E1;
+      --text: #0F172A;
+      --muted: #475569;
+      --accent: #00695C;
+      --gold: #B45309;
+      --badge-bg: rgba(0, 105, 92, 0.08);
+      --badge-border: rgba(0, 105, 92, 0.24);
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    body.dark-theme {
+      --bg: #0B0C10;
+      --surface: #131720;
+      --surface-soft: #181D29;
+      --border: rgba(0, 255, 204, 0.16);
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --accent: #00FFCC;
+      --gold: #FFD700;
+      --badge-bg: rgba(0, 255, 204, 0.10);
+      --badge-border: rgba(0, 255, 204, 0.28);
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      padding: 24px 16px 56px;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 28px 20px 26px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .emblem-wrap {
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 2.2px;
+      background: linear-gradient(110deg, var(--gold), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    .doc-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .meta-row {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      border-radius: 999px;
+      padding: 4px 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .section-num {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul {
+      margin: 8px 0 10px 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    li strong {
+      color: var(--text);
+    }
+
+    a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid var(--badge-border);
+    }
+
+    a:hover {
+      opacity: 0.85;
+    }
+
+    .highlight-box {
+      background: var(--surface-soft);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-size: 13.5px;
+      color: var(--text);
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="emblem-wrap" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="76" height="76" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FFD700" />
+              <stop offset="100%" stop-color="#00FFCC" />
+            </linearGradient>
+            <linearGradient id="kGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FFFFFF" />
+              <stop offset="55%" stop-color="#00FFCC" />
+              <stop offset="100%" stop-color="#FFD700" />
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="56" fill="#0B0C10" stroke="url(#ringGrad)" stroke-width="4" />
+          <path d="M60 18 L92 31 V61 C92 82 77 96 60 103 C43 96 28 82 28 61 V31 Z"
+                fill="#131720" stroke="url(#ringGrad)" stroke-width="2.2" />
+          <path d="M44 37 H53 V57 L71 37 H82 L63 59 L84 84 H72 L53 62 V84 H44 Z"
+                fill="url(#kGrad)" />
+        </svg>
+      </div>
+      <div class="brand-title">KUSHWANTA</div>
+      <div class="doc-title">Privacy Policy &amp; App Usage Disclaimer</div>
+      <div class="meta-row">
+        <span class="pill">Published by Kushwanta Team</span>
+        <span class="pill">Effective: November 20, 2026</span>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="section-num">Section 01</div>
+      <h2>Our Privacy Commitment</h2>
+      <p>
+        <strong>Kushwanta</strong> is designed by the <strong>Kushwanta Team</strong> as a privacy-first personal finance
+        and cognitive wellness application. This Privacy Policy explains what information is stored locally on your
+        device, what limited information is processed if you choose to sign in, how third-party advertising partners
+        operate, and how you can permanently delete your account and all data at any time.
+      </p>
+      <p>
+        If you have any questions about this policy, contact us anytime at
+        <a href="mailto:kushwanta.team@gmail.com">kushwanta.team@gmail.com</a>.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 02</div>
+      <h2>Local-First Financial &amp; Mind Arena Storage</h2>
+      <p>
+        Your financial records and game progress belong strictly to you. All personal finance data and cognitive game
+        records are stored locally on your device using Android Room SQLite and encrypted/private app preferences:
+      </p>
+      <ul>
+        <li><strong>Financial Ledgers:</strong> Transactions, accounts, budgets, savings goals, bill reminders, debts, metal card vault entries, warranties, quick presets, and calculator histories.</li>
+        <li><strong>Mind Arena Progress:</strong> High scores, Arena XP, daily streaks, unlock states, and achievements across all 10 Mind Arena games.</li>
+        <li><strong>Zero Data Selling:</strong> We never sell, rent, or upload your personal financial transactions or ledger records to external marketing servers.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 03</div>
+      <h2>Optional Authentication (Firebase Auth)</h2>
+      <p>
+        You may use Kushwanta completely in <strong>Guest Mode</strong> without creating an account. If you optionally
+        choose to sign in with <strong>Google Sign-In</strong> or <strong>Email &amp; Password</strong> via
+        Google Firebase Authentication, we collect and process only the minimal profile details needed to personalize
+        your experience:
+      </p>
+      <ul>
+        <li><strong>Display Name</strong> (to personalize your Profile Hub)</li>
+        <li><strong>Email Address</strong> (for account authentication and password reset requests)</li>
+        <li><strong>Profile Photo URL</strong> (when signing in with Google, to display your avatar in the app)</li>
+      </ul>
+      <p>
+        Passwords for Email/Password accounts are handled securely by Firebase Authentication and are never stored in
+        plain text by Kushwanta.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 04</div>
+      <h2>Third-Party Advertising Partners</h2>
+      <p>
+        To keep Kushwanta accessible and support ongoing development, the app integrates third-party advertising
+        networks, specifically <strong>Google AdMob</strong> and <strong>Unity Ads</strong>.
+      </p>
+      <p>
+        These advertising partners may collect and use standard device signals—such as the
+        <strong>Android Advertising ID (AAID)</strong>, IP address, device model, OS version, and ad interaction
+        metrics—to deliver, measure, and personalize advertisements in accordance with their respective privacy
+        policies. You can reset or limit ad personalization at any time in your Android device's
+        <strong>Settings &rarr; Google &rarr; Ads</strong> menu.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 05</div>
+      <h2>One-Tap Account &amp; Data Deletion</h2>
+      <p>
+        You have complete control over your account and data. You can permanently delete your linked account and wipe
+        every local record directly inside the app at any time:
+      </p>
+      <div class="highlight-box">
+        Open <strong>Settings &rarr; Data &amp; Reset Controls &rarr; Delete Account &amp; All Data</strong>.
+        Confirming this action permanently deletes your active Firebase Auth user account (if signed in) and erases all
+        local Room database tables, preferences, avatar files, and Mind Arena game progress from your device.
+      </div>
+      <p style="margin-top: 10px;">
+        Alternatively, you may request account deletion assistance by emailing
+        <a href="mailto:kushwanta.team@gmail.com">kushwanta.team@gmail.com</a> from your registered email address.
+        Note that using <strong>Sign Out</strong> in Profile only ends your active login session and preserves your
+        local vault data.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 06</div>
+      <h2>Children's Privacy</h2>
+      <p>
+        Kushwanta is not directed to children under the age of <strong>13</strong> (or the minimum digital consent age
+        in your jurisdiction). We do not knowingly collect personal information from children under 13. If you believe
+        a child has provided personal information through the app, please contact us immediately at
+        <a href="mailto:kushwanta.team@gmail.com">kushwanta.team@gmail.com</a> so we can promptly remove it.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 07</div>
+      <h2>App Usage &amp; Financial Disclaimer</h2>
+      <p>
+        Kushwanta is a personal finance tracking, budgeting, educational calculator, and cognitive entertainment tool.
+        <strong>Kushwanta is not a registered bank, investment broker, lender, or certified financial, legal, or tax
+        advisor.</strong>
+      </p>
+      <p>
+        All financial calculators, projections, currency conversions, and insights are provided strictly for
+        informational and educational purposes. You are solely responsible for your financial decisions and for
+        verifying figures with qualified professionals before making investment, tax, or credit commitments.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-num">Section 08</div>
+      <h2>Policy Updates &amp; Contact Us</h2>
+      <p>
+        We may update this Privacy Policy periodically to reflect new features or legal requirements. The latest
+        effective date will always be displayed at the top of this page.
+      </p>
+      <p>
+        <strong>Publisher:</strong> Kushwanta Team<br />
+        <strong>Contact &amp; Privacy Support:</strong>
+        <a href="mailto:kushwanta.team@gmail.com">kushwanta.team@gmail.com</a>
+      </p>
+    </section>
+
+    <footer class="footer">
+      &copy; 2026 Kushwanta Team. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
