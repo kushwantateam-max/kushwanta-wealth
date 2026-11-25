@@ -8,13 +8,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,6 +54,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +76,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.ads.AdManager
@@ -140,7 +148,8 @@ fun DashboardScreen(
     onNavigateToBudgets: () -> Unit,
     modifier: Modifier = Modifier,
     budgets: List<BudgetEntity> = emptyList(),
-    onOpenAccountInVault: (Long) -> Unit = { onNavigateToAccounts() }
+    onOpenAccountInVault: (Long) -> Unit = { onNavigateToAccounts() },
+    onOpenLeaderboard: () -> Unit = {}
 ) {
     val accentColor = LocalAccentColor.current
     val lang by viewModel.appLanguage.collectAsState()
@@ -152,6 +161,8 @@ fun DashboardScreen(
     val lastLoginDate by viewModel.lastLoginDate.collectAsState()
     val thresholdPct by viewModel.alertThresholdPercent.collectAsState()
     val vaultVisualVersion by viewModel.vaultVisualVersion.collectAsState()
+    val liveLeaderboardRank by viewModel.userLeaderboardRank.collectAsStateWithLifecycle()
+    val profilePhotoUri by viewModel.profilePhotoUri.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsState()
 
     var showCurrencyPicker by remember { mutableStateOf(false) }
@@ -166,6 +177,21 @@ fun DashboardScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val dashboardLifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshLeaderboardState()
+    }
+
+    DisposableEffect(dashboardLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshLeaderboardState()
+            }
+        }
+        dashboardLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { dashboardLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     if (showCurrencyPicker) {
         GlobalCurrencyPickerDialog(
@@ -330,213 +356,274 @@ fun DashboardScreen(
                 )
             }
 
-            Row(
+            val formattedLiveRank = remember(liveLeaderboardRank) {
+                NumberFormat.getNumberInstance(Locale.US).format(liveLeaderboardRank)
+            }
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 0.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(top = 4.dp, bottom = 0.dp)
             ) {
+                val isCompactHeader = maxWidth < 375.dp
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(DarkCanvasBg)
-                            .border(
-                                width = 1.6.dp,
-                                brush = Brush.linearGradient(
-                                    if (isDarkHeader) listOf(Color(0xFFFFD700), Color(0xFF00FFCC))
-                                    else listOf(Color(0xFF00796B), Color(0xFFB45309))
-                                ),
-                                shape = CircleShape
-                            )
-                            .testTag("dashboard_official_logo_badge"),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.koshvanta_official_logo),
-                            contentDescription = "Kushwanta Official Logo",
-                            contentScale = ContentScale.Crop,
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .size(if (isCompactHeader) 38.dp else 42.dp)
                                 .clip(CircleShape)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Box(modifier = Modifier.weight(1f, fill = false)) {
-                        Column(
-                            modifier = Modifier
-                                .clickable { showBookMenu = true }
-                                .testTag("header_book_switcher")
-                        ) {
-                            Text(
-                                text = "KUSHWANTA",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    brush = wordmarkBrush,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 16.sp,
-                                    letterSpacing = 1.5.sp
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "WEALTH OS",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 1.3.sp,
-                                    color = if (isDarkHeader) Color(0xFFFFD700).copy(alpha = 0.85f) else Color(0xFF00796B),
-                                    maxLines = 1
+                                .background(DarkCanvasBg)
+                                .border(
+                                    width = 1.8.dp,
+                                    brush = Brush.linearGradient(
+                                        if (isDarkHeader) listOf(Color(0xFFFFD700), Color(0xFF00FFCC))
+                                        else listOf(Color(0xFF00695C), Color(0xFFB45309))
+                                    ),
+                                    shape = CircleShape
                                 )
+                                .testTag("dashboard_official_logo_badge"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (profilePhotoUri.isNotBlank()) {
+                                ProfileAvatarImage(
+                                    photoUri = profilePhotoUri,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.5.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Image(
+                                    painter = painterResource(id = R.drawable.koshvanta_official_logo),
+                                    contentDescription = "Kushwanta Official Logo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(if (isCompactHeader) 7.dp else 10.dp))
+                        Box(modifier = Modifier.weight(1f, fill = false)) {
+                            Column(
+                                modifier = Modifier
+                                    .clickable { showBookMenu = true }
+                                    .testTag("header_book_switcher")
+                            ) {
                                 Text(
-                                    text = " • ${currentBook.title}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 10.sp
+                                    text = "KUSHWANTA",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        brush = wordmarkBrush,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = if (isCompactHeader) 14.5.sp else 16.sp,
+                                        letterSpacing = if (isCompactHeader) 1.0.sp else 1.4.sp
                                     ),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "Switch Ledger Book",
-                                    tint = accentColor,
-                                    modifier = Modifier.size(15.dp)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "WEALTH OS",
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.1.sp,
+                                        color = if (isDarkHeader) Color(0xFFFFD700).copy(alpha = 0.85f) else Color(0xFF00796B),
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = " • ${currentBook.title}",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 9.5.sp
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Switch Ledger Book",
+                                        tint = accentColor,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
                             }
-                        }
-                        DropdownMenu(expanded = showBookMenu, onDismissRequest = { showBookMenu = false }) {
-                            FinancialBook.entries.forEach { b ->
-                                DropdownMenuItem(
-                                    text = { Text("${b.title} Ledger") },
-                                    onClick = {
-                                        viewModel.switchBook(b)
-                                        showBookMenu = false
-                                    }
-                                )
+                            DropdownMenu(expanded = showBookMenu, onDismissRequest = { showBookMenu = false }) {
+                                FinancialBook.entries.forEach { b ->
+                                    DropdownMenuItem(
+                                        text = { Text("${b.title} Ledger") },
+                                        onClick = {
+                                            viewModel.switchBook(b)
+                                            showBookMenu = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Compact Fire Streak Pill (replaces bulky middle banner; opens Achievement Locker)
-                    if (enabledWidgets.contains(AppPreferences.WIDGET_STREAK)) {
-                        val streakTint = if (isDarkHeader) Color(0xFFFFD700) else Color(0xFFB45309)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        // Clean, minimal 3D Golden-Cyan Trophy Leaderboard Icon Button
+                        val trophyBorderBrush = remember(isDarkHeader) {
+                            Brush.linearGradient(
+                                if (isDarkHeader) {
+                                    listOf(Color(0xFFFFD700), Color(0xFF00FFCC))
+                                } else {
+                                    listOf(Color(0xFFD97706), Color(0xFF00695C))
+                                }
+                            )
+                        }
+                        val trophyFillBrush = remember(isDarkHeader) {
+                            Brush.verticalGradient(
+                                if (isDarkHeader) {
+                                    listOf(Color(0xFF1A2233), Color(0xFF0B111C))
+                                } else {
+                                    listOf(Color(0xFFFFFFFF), Color(0xFFFEF3C7).copy(alpha = 0.55f))
+                                }
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(trophyFillBrush)
+                                .border(1.5.dp, trophyBorderBrush, CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.playAchievementChime()
+                                    onOpenLeaderboard()
+                                }
+                                .testTag("home_leaderboard_button"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Leaderboard Rank #$formattedLiveRank",
+                                tint = if (isDarkHeader) Color(0xFFFFD700) else Color(0xFFB45309),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Compact Fire Streak Pill (opens Achievement Locker)
+                        if (enabledWidgets.contains(AppPreferences.WIDGET_STREAK)) {
+                            val streakTint = if (isDarkHeader) Color(0xFFFFD700) else Color(0xFFB45309)
+                            Surface(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.playAchievementChime()
+                                    showAchievementsSheet = true
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isDarkHeader) Color(0xFF131720) else Color(0xFFF8FAFC),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (isDarkHeader) Color(0xFFFFD700).copy(alpha = 0.32f) else Color(0xFFCBD5E1)
+                                ),
+                                modifier = Modifier.testTag("home_streak_achievement_banner")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocalFireDepartment,
+                                        contentDescription = "Daily Login Streak",
+                                        tint = streakTint,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "${streakDays}d",
+                                        color = streakTint,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        // Notification Bell with unread badge
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isDarkHeader) Color(0xFF131720) else Color(0xFFF8FAFC)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isDarkHeader) Color.White.copy(alpha = 0.10f) else Color(0xFFCBD5E1),
+                                    shape = CircleShape
+                                )
+                                .clickable { showNotificationsSheet = true }
+                                .testTag("dashboard_alerts_bell"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Smart Alerts",
+                                tint = if (unreadAlertsCount > 0) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            if (unreadAlertsCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(6.dp)
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(StateRed)
+                                )
+                            }
+                        }
+
+                        // Worldwide Currency Picker Chip (36+ countries)
                         Surface(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.playAchievementChime()
-                                showAchievementsSheet = true
-                            },
                             shape = RoundedCornerShape(20.dp),
                             color = if (isDarkHeader) Color(0xFF131720) else Color(0xFFF8FAFC),
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                if (isDarkHeader) Color(0xFFFFD700).copy(alpha = 0.32f) else Color(0xFFCBD5E1)
+                                if (isDarkHeader) Color.White.copy(alpha = 0.10f) else Color(0xFFCBD5E1)
                             ),
-                            modifier = Modifier.testTag("home_streak_achievement_banner")
+                            modifier = Modifier
+                                .clickable { showCurrencyPicker = true }
+                                .testTag("dashboard_currency_chip")
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocalFireDepartment,
-                                    contentDescription = "Daily Login Streak",
-                                    tint = streakTint,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(text = currentCurrency.flag, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text(
-                                    text = "${streakDays}d",
-                                    color = streakTint,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    text = viewModel.activeSymbol(),
+                                    fontWeight = FontWeight.Bold,
+                                    color = accentColor,
+                                    fontSize = 11.5.sp,
                                     maxLines = 1
                                 )
+                                if (!isCompactHeader) {
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = currentCurrency.code,
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                }
                             }
-                        }
-                    }
-
-                    // Notification Bell with unread badge
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isDarkHeader) Color(0xFF131720) else Color(0xFFF8FAFC)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (isDarkHeader) Color.White.copy(alpha = 0.10f) else Color(0xFFCBD5E1),
-                                shape = CircleShape
-                            )
-                            .clickable { showNotificationsSheet = true }
-                            .testTag("dashboard_alerts_bell"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Smart Alerts",
-                            tint = if (unreadAlertsCount > 0) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        if (unreadAlertsCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(6.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(StateRed)
-                            )
-                        }
-                    }
-
-                    // Worldwide Currency Picker Chip (36+ countries)
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isDarkHeader) Color(0xFF131720) else Color(0xFFF8FAFC),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isDarkHeader) Color.White.copy(alpha = 0.10f) else Color(0xFFCBD5E1)
-                        ),
-                        modifier = Modifier
-                            .clickable { showCurrencyPicker = true }
-                            .testTag("dashboard_currency_chip")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = currentCurrency.flag, fontSize = 13.sp)
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = viewModel.activeSymbol(),
-                                fontWeight = FontWeight.Bold,
-                                color = accentColor,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = currentCurrency.code,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
                         }
                     }
                 }

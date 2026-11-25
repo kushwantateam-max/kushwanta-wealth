@@ -90,8 +90,11 @@ import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.DarkTextPrimary
 import com.example.ui.theme.DarkTextSecondary
 import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.NeonMint
 import com.example.ui.theme.StateGreen
+import com.example.ui.theme.StateRed
 import com.example.ui.theme.StateYellow
 import com.example.ui.viewmodel.KoshvantaViewModel
 import kotlinx.coroutines.delay
@@ -284,6 +287,17 @@ fun ImpulseCooldownHubCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val hubAccent = if (isDark) NeonMint else themeAccent
+    val hubBgColors = if (isDark) {
+        listOf(DarkSurfaceElevated, DarkCanvasBg)
+    } else {
+        listOf(Color(0xFFFFFFFF), Color(0xFFF8FAFC))
+    }
+    val titleColor = if (isDark) DarkTextPrimary else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) DarkTextSecondary else Color(0xFF475569)
+
     val active = remember { mutableStateOf(ImpulseCooldownStore.loadActive(context)) }
     val stats = remember { mutableStateOf(ImpulseCooldownStore.loadStats(context)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -302,14 +316,18 @@ fun ImpulseCooldownHubCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = DarkCanvasBg,
-        border = BorderStroke(
-            width = 1.2.dp,
-            brush = Brush.linearGradient(
-                colors = listOf(NeonMint.copy(alpha = 0.78f), ElectricCyan.copy(alpha = 0.35f))
+        color = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF),
+        border = if (isDark) {
+            BorderStroke(
+                width = 1.2.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(NeonMint.copy(alpha = 0.78f), ElectricCyan.copy(alpha = 0.35f))
+                )
             )
-        ),
-        shadowElevation = 4.dp,
+        } else {
+            BorderStroke(1.dp, Color(0xFFE2E8F0))
+        },
+        shadowElevation = if (isDark) 4.dp else 1.dp,
         modifier = modifier
             .fillMaxWidth()
             .height(145.dp)
@@ -318,11 +336,7 @@ fun ImpulseCooldownHubCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(DarkSurfaceElevated, DarkCanvasBg)
-                    )
-                )
+                .background(Brush.verticalGradient(colors = hubBgColors))
                 .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -335,25 +349,25 @@ fun ImpulseCooldownHubCard(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(NeonMint.copy(alpha = 0.16f))
-                        .border(1.dp, NeonMint.copy(alpha = 0.45f), RoundedCornerShape(12.dp)),
+                        .background(hubAccent.copy(alpha = if (isDark) 0.16f else 0.12f))
+                        .border(1.dp, hubAccent.copy(alpha = if (isDark) 0.45f else 0.25f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.HourglassTop,
                         contentDescription = "24-Hour Impulse Buying Cool-Down Timer",
-                        tint = NeonMint,
+                        tint = hubAccent,
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = NeonMint.copy(alpha = 0.16f)
+                    color = hubAccent.copy(alpha = if (isDark) 0.16f else 0.12f)
                 ) {
                     Text(
                         text = if (isReadyToClaim) "Claim" else if (currentActive != null) "Live" else "24H/48H",
-                        color = NeonMint,
+                        color = hubAccent,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.ExtraBold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -364,7 +378,7 @@ fun ImpulseCooldownHubCard(
             Column {
                 Text(
                     text = "Impulse Cool-Down",
-                    color = DarkTextPrimary,
+                    color = titleColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -382,7 +396,7 @@ fun ImpulseCooldownHubCard(
                         else ->
                             "24h/48h pause timer & days-cost guard"
                     },
-                    color = DarkTextSecondary,
+                    color = subtitleColor,
                     fontSize = 10.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -408,6 +422,20 @@ fun ToolImpulseCooldownTimer(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val accent = if (isDark) NeonMint else themeAccent
+    val arcSecondary = if (isDark) ElectricCyan else accent.copy(alpha = 0.72f)
+    val cardBg = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val elevatedBg = if (isDark) DarkSurfaceElevated else Color(0xFFF8FAFC)
+    val bannerBorder = if (isDark) NeonMint.copy(alpha = 0.5f) else Color(0xFFE2E8F0)
+    val mainCardBorder = if (isDark) NeonMint.copy(alpha = 0.4f) else Color(0xFFE2E8F0)
+    val titleColor = if (isDark) DarkTextPrimary else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) DarkTextSecondary else Color(0xFF475569)
+    val ringTrackColor = if (isDark) Color(0xFF1A2230) else Color(0xFFE2E8F0)
+    val celebrationBg = if (isDark) Color(0xFF06231E) else Color(0xFFF0FDF9)
+    val ctaContentColor = if (isDark) DarkCanvasBg else Color.White
+    val errColor = if (isDark) Color(0xFFFF6B6B) else StateRed
     val dailyLimitFallback by viewModel.dailySpendingLimitUsd.collectAsState()
 
     var activeCooldown by remember { mutableStateOf(ImpulseCooldownStore.loadActive(context)) }
@@ -532,12 +560,13 @@ fun ToolImpulseCooldownTimer(
             .testTag("impulse_cooldown_screen"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Lifetime Rescued Impulse Savings Banner (Dark Neon Glassmorphic)
+        // 1. Lifetime Rescued Impulse Savings Banner
         item {
             Surface(
                 shape = RoundedCornerShape(22.dp),
-                color = DarkCanvasBg,
-                border = BorderStroke(1.2.dp, NeonMint.copy(alpha = 0.5f)),
+                color = cardBg,
+                border = BorderStroke(if (isDark) 1.2.dp else 1.dp, bannerBorder),
+                shadowElevation = if (isDark) 0.dp else 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
@@ -545,7 +574,7 @@ fun ToolImpulseCooldownTimer(
                         .fillMaxWidth()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(DarkSurfaceElevated, DarkCanvasBg)
+                                colors = listOf(elevatedBg, cardBg)
                             )
                         )
                         .padding(16.dp)
@@ -558,7 +587,7 @@ fun ToolImpulseCooldownTimer(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "IMPULSE MONEY RESCUED",
-                                color = NeonMint,
+                                color = accent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.sp
@@ -566,7 +595,7 @@ fun ToolImpulseCooldownTimer(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "${viewModel.activeSymbol()}${String.format(Locale.US, "%,.2f", animatedTotalSavedDisplay)}",
-                                color = DarkTextPrimary,
+                                color = titleColor,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 modifier = Modifier.testTag("impulse_lifetime_saved_text")
@@ -577,7 +606,7 @@ fun ToolImpulseCooldownTimer(
                                 } else {
                                     "${stats.rescuedCount} impulse buy(s) resisted • Last: ${stats.lastRescuedName}"
                                 },
-                                color = DarkTextSecondary,
+                                color = subtitleColor,
                                 fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -587,14 +616,14 @@ fun ToolImpulseCooldownTimer(
                             modifier = Modifier
                                 .size(50.dp)
                                 .clip(CircleShape)
-                                .background(NeonMint.copy(alpha = 0.14f))
-                                .border(1.dp, NeonMint.copy(alpha = 0.45f), CircleShape),
+                                .background(accent.copy(alpha = 0.14f))
+                                .border(1.dp, accent.copy(alpha = 0.45f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Savings,
                                 contentDescription = "Impulse Savings",
-                                tint = NeonMint,
+                                tint = accent,
                                 modifier = Modifier.size(26.dp)
                             )
                         }
@@ -611,8 +640,8 @@ fun ToolImpulseCooldownTimer(
             ) {
                 Surface(
                     shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFF06231E),
-                    border = BorderStroke(1.5.dp, NeonMint),
+                    color = celebrationBg,
+                    border = BorderStroke(1.5.dp, accent),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("impulse_celebration_banner")
@@ -630,12 +659,12 @@ fun ToolImpulseCooldownTimer(
                             val maxR = size.minDimension * 0.9f
                             if (p in 0.01f..0.99f) {
                                 drawCircle(
-                                    color = NeonMint.copy(alpha = (1f - p) * 0.55f),
+                                    color = accent.copy(alpha = (1f - p) * 0.55f),
                                     radius = maxR * p,
                                     center = center,
                                     style = Stroke(width = 4.dp.toPx())
                                 )
-                                val particleColors = listOf(NeonMint, ElectricCyan, StateYellow, StateGreen)
+                                val particleColors = listOf(accent, arcSecondary, StateYellow, StateGreen)
                                 val count = 16
                                 for (i in 0 until count) {
                                     val angle = (2.0 * PI * i / count)
@@ -657,19 +686,19 @@ fun ToolImpulseCooldownTimer(
                             Icon(
                                 imageVector = Icons.Default.Celebration,
                                 contentDescription = "Saved Celebration",
-                                tint = NeonMint,
+                                tint = accent,
                                 modifier = Modifier.size(34.dp)
                             )
                             Text(
                                 text = "WILLPOWER VICTORY!",
-                                color = NeonMint,
+                                color = accent,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 14.sp,
                                 letterSpacing = 1.2.sp
                             )
                             Text(
                                 text = celebrationBannerText.orEmpty(),
-                                color = DarkTextPrimary,
+                                color = titleColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
@@ -680,12 +709,13 @@ fun ToolImpulseCooldownTimer(
             }
         }
 
-        // 3. Main Dark Neon Cool-Down Ring & Active / Setup Controls
+        // 3. Main Cool-Down Ring & Active / Setup Controls
         item {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = DarkCanvasBg,
-                border = BorderStroke(1.25.dp, NeonMint.copy(alpha = 0.4f)),
+                color = cardBg,
+                border = BorderStroke(if (isDark) 1.25.dp else 1.dp, mainCardBorder),
+                shadowElevation = if (isDark) 0.dp else 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -708,9 +738,9 @@ fun ToolImpulseCooldownTimer(
                             val arcSize = Size(size.width - pad * 2f, size.height - pad * 2f)
                             val topLeft = Offset(pad, pad)
 
-                            // Outer ambient neon glow
+                            // Outer ambient glow
                             drawCircle(
-                                color = NeonMint.copy(
+                                color = accent.copy(
                                     alpha = if (activeItem != null) neonGlowAlpha * 0.16f else 0.08f
                                 ),
                                 radius = (size.minDimension / 2f) - 4.dp.toPx(),
@@ -719,7 +749,7 @@ fun ToolImpulseCooldownTimer(
 
                             // Track arc
                             drawArc(
-                                color = Color(0xFF1A2230),
+                                color = ringTrackColor,
                                 startAngle = -90f,
                                 sweepAngle = 360f,
                                 useCenter = false,
@@ -728,7 +758,7 @@ fun ToolImpulseCooldownTimer(
                                 style = Stroke(width = strokeW, cap = StrokeCap.Round)
                             )
 
-                            // Progress arc (#00FFCC -> #00E5FF)
+                            // Progress arc
                             val sweep = if (activeItem == null) {
                                 18f
                             } else {
@@ -736,7 +766,7 @@ fun ToolImpulseCooldownTimer(
                             }
                             drawArc(
                                 brush = Brush.sweepGradient(
-                                    colors = listOf(NeonMint, ElectricCyan, NeonMint)
+                                    colors = listOf(accent, arcSecondary, accent)
                                 ),
                                 startAngle = -90f,
                                 sweepAngle = sweep,
@@ -752,7 +782,7 @@ fun ToolImpulseCooldownTimer(
                             val cx = size.width / 2f + (radius * cos(tipAngleRad)).toFloat()
                             val cy = size.height / 2f + (radius * sin(tipAngleRad)).toFloat()
                             drawCircle(
-                                color = NeonMint.copy(alpha = 0.4f),
+                                color = accent.copy(alpha = 0.4f),
                                 radius = strokeW * 0.85f,
                                 center = Offset(cx, cy)
                             )
@@ -773,7 +803,7 @@ fun ToolImpulseCooldownTimer(
                                     activeItem != null -> "${activeItem.durationHours}H COOL-DOWN"
                                     else -> "${selectedHours}H GUARD"
                                 },
-                                color = NeonMint,
+                                color = accent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.1.sp
@@ -785,7 +815,7 @@ fun ToolImpulseCooldownTimer(
                                     isTimerComplete -> "00:00:00"
                                     else -> ImpulseCooldownCalculator.formatCountdownHms(remainingMillis)
                                 },
-                                color = DarkTextPrimary,
+                                color = titleColor,
                                 fontSize = 30.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontFamily = FontFamily.Monospace,
@@ -798,7 +828,7 @@ fun ToolImpulseCooldownTimer(
                                     enteredPriceUsd > 0.0 -> "${itemNameInput.ifBlank { "Impulse Item" }} • ${viewModel.formatAmount(enteredPriceUsd)}"
                                     else -> "Enter item & price below"
                                 },
-                                color = DarkTextSecondary,
+                                color = subtitleColor,
                                 fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -810,8 +840,8 @@ fun ToolImpulseCooldownTimer(
                     // Days of Savings Insight Pill (Live calculated)
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = DarkSurfaceElevated,
-                        border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.25f)),
+                        color = elevatedBg,
+                        border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.25f) else Color(0xFFE2E8F0)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("impulse_days_cost_card")
@@ -826,7 +856,7 @@ fun ToolImpulseCooldownTimer(
                                 } else {
                                     "Enter a price to see how many days of savings it costs"
                                 },
-                                color = if (displayPriceUsd > 0.0) NeonMint else DarkTextSecondary,
+                                color = if (displayPriceUsd > 0.0) accent else subtitleColor,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center
@@ -834,7 +864,7 @@ fun ToolImpulseCooldownTimer(
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "${savingsRateInfo.sourceLabel} (${viewModel.formatAmount(savingsRateInfo.dailyRateUsd)}/day)",
-                                color = DarkTextSecondary,
+                                color = subtitleColor,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -853,13 +883,13 @@ fun ToolImpulseCooldownTimer(
                             placeholder = { Text("e.g., Wireless Headphones, Sneakers") },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = NeonMint,
-                                unfocusedBorderColor = NeonMint.copy(alpha = 0.35f),
-                                focusedLabelColor = NeonMint,
-                                unfocusedLabelColor = DarkTextSecondary,
-                                focusedTextColor = DarkTextPrimary,
-                                unfocusedTextColor = DarkTextPrimary,
-                                cursorColor = NeonMint
+                                focusedBorderColor = accent,
+                                unfocusedBorderColor = if (isDark) accent.copy(alpha = 0.35f) else Color(0xFFCBD5E1),
+                                focusedLabelColor = accent,
+                                unfocusedLabelColor = subtitleColor,
+                                focusedTextColor = titleColor,
+                                unfocusedTextColor = titleColor,
+                                cursorColor = accent
                             ),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
@@ -880,13 +910,13 @@ fun ToolImpulseCooldownTimer(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = NeonMint,
-                                unfocusedBorderColor = NeonMint.copy(alpha = 0.35f),
-                                focusedLabelColor = NeonMint,
-                                unfocusedLabelColor = DarkTextSecondary,
-                                focusedTextColor = DarkTextPrimary,
-                                unfocusedTextColor = DarkTextPrimary,
-                                cursorColor = NeonMint
+                                focusedBorderColor = accent,
+                                unfocusedBorderColor = if (isDark) accent.copy(alpha = 0.35f) else Color(0xFFCBD5E1),
+                                focusedLabelColor = accent,
+                                unfocusedLabelColor = subtitleColor,
+                                focusedTextColor = titleColor,
+                                unfocusedTextColor = titleColor,
+                                cursorColor = accent
                             ),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
@@ -910,8 +940,8 @@ fun ToolImpulseCooldownTimer(
                             quickIdeas.forEach { (label, defaultAmt) ->
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = DarkSurfaceElevated,
-                                    border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.25f)),
+                                    color = elevatedBg,
+                                    border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.25f) else Color(0xFFE2E8F0)),
                                     modifier = Modifier.clickable {
                                         itemNameInput = label
                                         priceInput = defaultAmt
@@ -920,7 +950,7 @@ fun ToolImpulseCooldownTimer(
                                 ) {
                                     Text(
                                         text = "$label (${viewModel.activeSymbol()}$defaultAmt)",
-                                        color = DarkTextPrimary,
+                                        color = titleColor,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
@@ -954,11 +984,11 @@ fun ToolImpulseCooldownTimer(
                                         )
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = NeonMint.copy(alpha = 0.18f),
-                                        selectedLabelColor = NeonMint,
-                                        selectedLeadingIconColor = NeonMint,
-                                        containerColor = DarkSurfaceElevated,
-                                        labelColor = DarkTextSecondary
+                                        selectedContainerColor = accent.copy(alpha = if (isDark) 0.18f else 0.12f),
+                                        selectedLabelColor = accent,
+                                        selectedLeadingIconColor = accent,
+                                        containerColor = elevatedBg,
+                                        labelColor = subtitleColor
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
@@ -970,7 +1000,7 @@ fun ToolImpulseCooldownTimer(
                         if (validationError != null) {
                             Text(
                                 text = validationError.orEmpty(),
-                                color = Color(0xFFFF6B6B),
+                                color = errColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1001,8 +1031,8 @@ fun ToolImpulseCooldownTimer(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = NeonMint,
-                                contentColor = DarkCanvasBg
+                                containerColor = accent,
+                                contentColor = ctaContentColor
                             ),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
@@ -1027,7 +1057,7 @@ fun ToolImpulseCooldownTimer(
                             ) {
                                 Text(
                                     text = "Destination Savings Vault:",
-                                    color = DarkTextSecondary,
+                                    color = subtitleColor,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -1044,10 +1074,10 @@ fun ToolImpulseCooldownTimer(
                                             onClick = { selectedGoalId = goal.id },
                                             label = { Text(goal.name, fontSize = 11.sp) },
                                             colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = NeonMint.copy(alpha = 0.2f),
-                                                selectedLabelColor = NeonMint,
-                                                containerColor = DarkSurfaceElevated,
-                                                labelColor = DarkTextSecondary
+                                                selectedContainerColor = accent.copy(alpha = if (isDark) 0.2f else 0.12f),
+                                                selectedLabelColor = accent,
+                                                containerColor = elevatedBg,
+                                                labelColor = subtitleColor
                                             )
                                         )
                                     }
@@ -1056,7 +1086,7 @@ fun ToolImpulseCooldownTimer(
                         } else {
                             Text(
                                 text = "Tapping 'I Saved It!' will automatically create an 'Impulse Rescue Vault' in Savings.",
-                                color = DarkTextSecondary,
+                                color = subtitleColor,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -1066,8 +1096,8 @@ fun ToolImpulseCooldownTimer(
                             Button(
                                 onClick = claimSavedAction,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = NeonMint,
-                                    contentColor = DarkCanvasBg
+                                    containerColor = accent,
+                                    contentColor = ctaContentColor
                                 ),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier
@@ -1095,14 +1125,14 @@ fun ToolImpulseCooldownTimer(
                                         activeCooldown = null
                                         SoundEffectManager.playDeleteSound()
                                     },
-                                    border = BorderStroke(1.dp, DarkTextSecondary.copy(alpha = 0.45f)),
+                                    border = BorderStroke(1.dp, subtitleColor.copy(alpha = 0.45f)),
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(48.dp)
                                         .testTag("impulse_cancel_button")
                                 ) {
-                                    Text("Cancel", color = DarkTextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    Text("Cancel", color = subtitleColor, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 }
 
                                 Button(
@@ -1114,10 +1144,10 @@ fun ToolImpulseCooldownTimer(
                                         nowMillis = System.currentTimeMillis()
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = NeonMint.copy(alpha = 0.16f),
-                                        contentColor = NeonMint
+                                        containerColor = accent.copy(alpha = if (isDark) 0.16f else 0.12f),
+                                        contentColor = accent
                                     ),
-                                    border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.55f)),
+                                    border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier
                                         .weight(1.4f)

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DashboardCustomize
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -108,6 +109,7 @@ fun SettingsScreen(
     currentBook: FinancialBook,
     currentCurrency: CurrencyCode,
     onBackClick: (() -> Unit)? = null,
+    onOpenEliteHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -925,13 +927,54 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSectionLabel("LEGAL & SUPPORT", accentColor)
+            SettingsSectionLabel("COMMUNITY, LEGAL & SUPPORT", accentColor)
         }
 
-        // 7b. Legal & Support — Exact-Match Privacy Policy & Clickable Support Email
+        // 7b. Community, Legal & Support — Elite Hub, Exact-Match Privacy Policy & Support Email
         item {
             GlassCard(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onOpenEliteHub() }
+                            .padding(vertical = 12.dp, horizontal = 4.dp)
+                            .testTag("settings_elite_hub_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Groups,
+                                contentDescription = AppStrings.eliteHubTitle(lang),
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = AppStrings.eliteHubTitle(lang),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = AppStrings.eliteHubEntrySubtitle(lang),
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = AppStrings.eliteHubTitle(lang),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

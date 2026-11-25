@@ -56,6 +56,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import android.content.SharedPreferences
+import com.example.domain.leaderboard.ChampionsLeaderboardEngine
+import com.example.domain.leaderboard.ChampionsLeaderboardMath
+import com.example.domain.leaderboard.LeaderboardCelebration
+import com.example.domain.leaderboard.LeaderboardUiState
 import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Collections
@@ -92,6 +97,9 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
     private val db = KoshvantaDatabase.getInstance(application)
     val prefs = AppPreferences(application)
     private val repository = KoshvantaRepository(db.dao(), prefs)
+    private val championsEngine = ChampionsLeaderboardEngine(application)
+    private val arenaPrefs: SharedPreferences =
+        appContext.getSharedPreferences("kushwanta_mind_arena_prefs", Context.MODE_PRIVATE)
     private val inFlightBillIds: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf())
 
     private val _currentBook = MutableStateFlow(FinancialBook.PERSONAL)
@@ -169,6 +177,24 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _vaultVisualVersion = MutableStateFlow(0)
     val vaultVisualVersion: StateFlow<Int> = _vaultVisualVersion.asStateFlow()
+
+    private val _leaderboardState = MutableStateFlow(LeaderboardUiState())
+    val leaderboardState: StateFlow<LeaderboardUiState> = _leaderboardState.asStateFlow()
+
+    private val _userLeaderboardRank = MutableStateFlow(1485)
+    val userLeaderboardRank: StateFlow<Int> = _userLeaderboardRank.asStateFlow()
+
+    private val _hasShownSessionLeaderboardPill = MutableStateFlow(false)
+    val hasShownSessionLeaderboardPill: StateFlow<Boolean> = _hasShownSessionLeaderboardPill.asStateFlow()
+
+    private val _pendingCelebration = MutableStateFlow<LeaderboardCelebration?>(null)
+    val pendingCelebration: StateFlow<LeaderboardCelebration?> = _pendingCelebration.asStateFlow()
+
+    private val arenaPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "arena_total_xp" || key == "arena_games_played" || key == "arena_streak_days") {
+            refreshLeaderboardState()
+        }
+    }
 
     fun requestOpenCardInVault(accountId: Long) {
         _targetVaultAccountId.value = accountId
@@ -290,6 +316,42 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         SoundEffectManager.isEnabled = prefs.soundEffectsEnabled.value
         NotificationHelper.ensureChannels(appContext)
         prefs.recordDailyLogin()
+        arenaPrefs.registerOnSharedPreferenceChangeListener(arenaPrefsListener)
+        refreshLeaderboardState()
+        viewModelScope.launch {
+            combine(profileDisplayName, profilePhotoUri, streakCount) { _, _, _ ->
+            }.collect {
+                refreshLeaderboardState()
+            }
+        }
+        viewModelScope.launch(Dispatchers.Default) {
+            combine(currentMonthBudgets, transactionsWithDetails) { budgets, txs ->
+                if (prefs.isDemoWiped() && budgets.isNotEmpty()) {
+                    val cal = Calendar.getInstance()
+                    val curMonth = cal.get(Calendar.MONTH)
+                    val curYear = cal.get(Calendar.YEAR)
+                    val spentByCat = HashMap<Long, Double>()
+                    txs.forEach { item ->
+                        if (item.transaction.type == TransactionType.EXPENSE) {
+                            val txCal = Calendar.getInstance().apply { timeInMillis = item.transaction.timestamp }
+                            if (txCal.get(Calendar.MONTH) == curMonth && txCal.get(Calendar.YEAR) == curYear) {
+                                spentByCat[item.transaction.categoryId] =
+                                    (spentByCat[item.transaction.categoryId] ?: 0.0) + item.transaction.amount
+                            }
+                        }
+                    }
+                    val withinAll = budgets.all { b ->
+                        val spent = spentByCat[b.categoryId] ?: 0.0
+                        b.monthlyLimit > 0.0 && spent <= b.monthlyLimit
+                    }
+                    championsEngine.recordBudgetSetupOrAdherence(
+                        hasActiveBudgets = true,
+                        withinAllBudgets = withinAll
+                    )
+                    refreshLeaderboardState()
+                }
+            }.collect { }
+        }
         viewModelScope.launch {
             val security = runCatching { prefs.loadSecurityStateAsync() }
                 .getOrDefault(SecurityLockState())
@@ -304,8 +366,56 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    override fun onCleared() {
+        runCatching { arenaPrefs.unregisterOnSharedPreferenceChangeListener(arenaPrefsListener) }
+        super.onCleared()
+    }
+
+    fun refreshLeaderboardState() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val rawName = prefs.profileDisplayName.value.trim()
+            val resolvedName = if (rawName.isNotBlank()) {
+                ChampionsLeaderboardMath.sanitizePlayerDisplayName(rawName)
+            } else {
+                ChampionsLeaderboardMath.sanitizePlayerDisplayName(prefs.profileEmail.value)
+            }
+            val nextState = championsEngine.syncAndGetState(
+                userName = resolvedName,
+                userPhotoUri = prefs.profilePhotoUri.value,
+                userStreakDays = prefs.streakCount.value.coerceAtLeast(1)
+            )
+            _leaderboardState.value = nextState
+            _userLeaderboardRank.value = nextState.currentUserEntry.rank
+            val celebration = championsEngine.consumePendingCelebrationForRank(nextState.currentUserEntry.rank)
+            if (celebration != null && _pendingCelebration.value == null) {
+                _pendingCelebration.value = celebration
+            }
+        }
+    }
+
+    fun dismissPendingCelebration() {
+        _pendingCelebration.value = null
+    }
+
+    fun recordFinancialToolExplored(toolId: String) {
+        viewModelScope.launch(Dispatchers.Default) {
+            championsEngine.recordFinancialToolExplored(toolId)
+            refreshLeaderboardState()
+        }
+    }
+
+    fun markSessionLeaderboardPillShown() {
+        _hasShownSessionLeaderboardPill.value = true
+    }
+
     fun checkInDailyLogin() {
         val advanced = prefs.recordDailyLogin()
+        if (prefs.profilePhotoUri.value.isBlank()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                ProfileSyncManager.syncCurrentFirebaseUser(appContext, prefs)
+            }
+        }
+        refreshLeaderboardState()
         if (advanced) {
             val summary = FinanceCalculators.evaluateStreakChallenge(prefs.streakCount.value)
             when {
@@ -359,6 +469,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             )
             prefs.setCustomCardsLockedAsync(false)
             prefs.setDemoWipedAsync(true)
+            championsEngine.recordCardVaultActivity()
+            refreshLeaderboardState()
             notifyVaultVisualChanged()
             SoundEffectManager.playSuccessChime()
             _toastMessage.value = "✨ Loaded 3 ${currency.countryName} 3D starter cards"
@@ -768,6 +880,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             repository.addTransaction(tx)
             prefs.setDemoWipedAsync(true)
             prefs.recordDailyLogStreak()
+            championsEngine.recordTransactionActivity()
+            refreshLeaderboardState()
             _isQuickEntrySheetOpen.value = false
 
             val alertFired = if (tx.type == TransactionType.EXPENSE) {
@@ -870,6 +984,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             repository.addTransaction(tx)
             prefs.setDemoWipedAsync(true)
             prefs.recordDailyLogStreak()
+            championsEngine.recordTransactionActivity()
+            refreshLeaderboardState()
             _isVoiceSheetOpen.value = false
 
             val updatedCategories = repository.getCategories().first()
@@ -973,6 +1089,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             repository.addTransaction(tx)
             prefs.setDemoWipedAsync(true)
             prefs.recordDailyLogStreak()
+            championsEngine.recordTransactionActivity()
+            refreshLeaderboardState()
             val alertFired = if (tx.type == TransactionType.EXPENSE) {
                 evaluateAlertsAfterExpense(tx, availableCategories)
             } else {
@@ -1110,6 +1228,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.transferFunds(fromAccountId, toAccountId, amountUsd, note, _currentBook.value.id, activeProfile.value)
             prefs.setDemoWipedAsync(true)
+            championsEngine.recordTransactionActivity()
+            refreshLeaderboardState()
             _isTransferDialogOpen.value = false
             SoundEffectManager.playSuccessChime()
             _toastMessage.value = "Transferred ${formatAmount(amountUsd)} successfully!"
@@ -1172,6 +1292,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             MetalCardVaultStore.saveFinish(appContext, newId, preset.finish)
             prefs.setCustomCardsLockedAsync(true)
             prefs.setDemoWipedAsync(true)
+            championsEngine.recordCardVaultActivity()
+            refreshLeaderboardState()
             notifyVaultVisualChanged()
             SoundEffectManager.playSuccessChime()
             onCreated(newId)
@@ -1211,6 +1333,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             MetalCardVaultStore.saveCardCurrencyOverride(appContext, newId, override)
             prefs.setCustomCardsLockedAsync(true)
             prefs.setDemoWipedAsync(true)
+            championsEngine.recordCardVaultActivity()
+            refreshLeaderboardState()
             notifyVaultVisualChanged()
             _isAddAccountDialogOpen.value = false
             SoundEffectManager.playSuccessChime()
@@ -1250,6 +1374,8 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             val override = if (newCurrency != currentCurrency.value) newCurrency else null
             MetalCardVaultStore.saveCardCurrencyOverride(appContext, account.id, override)
             prefs.setCustomCardsLockedAsync(true)
+            championsEngine.recordCardVaultActivity()
+            refreshLeaderboardState()
             notifyVaultVisualChanged()
             SoundEffectManager.playSuccessChime()
             _toastMessage.value = "Updated '${updated.name}'!"
@@ -1283,6 +1409,9 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
                 periodYear = cal.get(Calendar.YEAR)
             )
             repository.insertBudget(budget)
+            prefs.setDemoWipedAsync(true)
+            championsEngine.recordBudgetSetupOrAdherence(hasActiveBudgets = true, withinAllBudgets = true)
+            refreshLeaderboardState()
             _isAddBudgetDialogOpen.value = false
             SoundEffectManager.playSuccessChime()
             _toastMessage.value = "Monthly budget set to ${formatAmount(limitUsd)}"
@@ -1667,6 +1796,9 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
             ProfileSyncManager.deleteActiveFirebaseUser(context)
             repository.wipeAllUserData()
             prefs.wipeAllPreferencesForAccountDeletion(context)
+            _pendingCelebration.value = null
+            _hasShownSessionLeaderboardPill.value = false
+            refreshLeaderboardState()
             _isAppLocked.value = false
             SoundEffectManager.playDeleteSound()
             _toastMessage.value = "Account & all local data permanently deleted."

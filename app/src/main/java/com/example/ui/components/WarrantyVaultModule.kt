@@ -88,7 +88,10 @@ import com.example.ui.theme.DarkCanvasBg
 import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.DarkTextPrimary
 import com.example.ui.theme.DarkTextSecondary
+import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.NeonMint
+import com.example.ui.theme.StateRed
 import com.example.ui.theme.StateRedNeon
 import com.example.ui.theme.StateYellow
 import kotlinx.coroutines.Dispatchers
@@ -421,6 +424,18 @@ fun WarrantyVaultHubCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val hubAccent = if (isDark) NeonMint else themeAccent
+    val hubAlert = if (isDark) StateRedNeon else Color(0xFFDC2626)
+    val hubBgColors = if (isDark) {
+        listOf(DarkSurfaceElevated, DarkCanvasBg)
+    } else {
+        listOf(Color(0xFFFFFFFF), Color(0xFFF8FAFC))
+    }
+    val titleColor = if (isDark) DarkTextPrimary else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) DarkTextSecondary else Color(0xFF475569)
+
     val items = remember { mutableStateOf(WarrantyVaultStore.loadAll(context)) }
     val urgentCount = remember(items.value) {
         val now = System.currentTimeMillis()
@@ -430,19 +445,23 @@ fun WarrantyVaultHubCard(
         }
     }
     val hasAlert = urgentCount > 0
-    val highlightColor = if (hasAlert) StateRedNeon else NeonMint
+    val highlightColor = if (hasAlert) hubAlert else hubAccent
 
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = DarkCanvasBg,
-        border = BorderStroke(
-            width = 1.2.dp,
-            brush = Brush.linearGradient(
-                colors = listOf(highlightColor.copy(alpha = 0.78f), NeonMint.copy(alpha = 0.35f))
+        color = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF),
+        border = if (isDark) {
+            BorderStroke(
+                width = 1.2.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(highlightColor.copy(alpha = 0.78f), NeonMint.copy(alpha = 0.35f))
+                )
             )
-        ),
-        shadowElevation = 4.dp,
+        } else {
+            BorderStroke(1.dp, if (hasAlert) hubAlert.copy(alpha = 0.45f) else Color(0xFFE2E8F0))
+        },
+        shadowElevation = if (isDark) 4.dp else 1.dp,
         modifier = modifier
             .fillMaxWidth()
             .height(145.dp)
@@ -451,11 +470,7 @@ fun WarrantyVaultHubCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(DarkSurfaceElevated, DarkCanvasBg)
-                    )
-                )
+                .background(Brush.verticalGradient(colors = hubBgColors))
                 .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -468,8 +483,8 @@ fun WarrantyVaultHubCard(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(highlightColor.copy(alpha = 0.16f))
-                        .border(1.dp, highlightColor.copy(alpha = 0.45f), RoundedCornerShape(12.dp)),
+                        .background(highlightColor.copy(alpha = if (isDark) 0.16f else 0.12f))
+                        .border(1.dp, highlightColor.copy(alpha = if (isDark) 0.45f else 0.25f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -482,7 +497,7 @@ fun WarrantyVaultHubCard(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = highlightColor.copy(alpha = 0.16f)
+                    color = highlightColor.copy(alpha = if (isDark) 0.16f else 0.12f)
                 ) {
                     Text(
                         text = when {
@@ -501,7 +516,7 @@ fun WarrantyVaultHubCard(
             Column {
                 Text(
                     text = "Warranty Vault",
-                    color = DarkTextPrimary,
+                    color = titleColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -516,7 +531,7 @@ fun WarrantyVaultHubCard(
                         val cd = WarrantyCalculator.computeCountdown(next.expiryDateMillis)
                         "${next.productName}: ${cd.badgeLabel}"
                     },
-                    color = DarkTextSecondary,
+                    color = subtitleColor,
                     fontSize = 10.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -536,6 +551,24 @@ fun ToolWarrantyVault() {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val accent = if (isDark) NeonMint else themeAccent
+    val dangerColor = if (isDark) StateRedNeon else Color(0xFFDC2626)
+    val cardBg = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val elevatedBg = if (isDark) DarkSurfaceElevated else Color(0xFFF8FAFC)
+    val titleColor = if (isDark) DarkTextPrimary else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) DarkTextSecondary else Color(0xFF475569)
+    val defaultBorder = if (isDark) NeonMint.copy(alpha = 0.35f) else Color(0xFFE2E8F0)
+    val ctaContentColor = if (isDark) DarkCanvasBg else Color.White
+    val severityColor: (WarrantyCountdownInfo) -> Color = { info ->
+        if (isDark) Color(info.accentColorHex)
+        else when (info.severity) {
+            WarrantySeverity.PROTECTED -> themeAccent
+            WarrantySeverity.CAUTION -> Color(0xFFB45309)
+            WarrantySeverity.ALERT_15_DAY, WarrantySeverity.EXPIRED -> Color(0xFFDC2626)
+        }
+    }
 
     var warranties by remember { mutableStateOf(WarrantyVaultStore.loadAll(context)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -601,21 +634,22 @@ fun ToolWarrantyVault() {
             .testTag("warranty_vault_screen"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Dark Neon Overview Banner
+        // 1. Overview Banner
         item {
             Surface(
                 shape = RoundedCornerShape(22.dp),
-                color = DarkCanvasBg,
+                color = cardBg,
                 border = BorderStroke(
-                    1.2.dp,
-                    if (expiringSoonCount > 0) StateRedNeon.copy(alpha = 0.7f) else NeonMint.copy(alpha = 0.55f)
+                    if (isDark) 1.2.dp else 1.dp,
+                    if (expiringSoonCount > 0) dangerColor.copy(alpha = 0.65f) else if (isDark) accent.copy(alpha = 0.55f) else Color(0xFFE2E8F0)
                 ),
+                shadowElevation = if (isDark) 0.dp else 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Brush.horizontalGradient(listOf(DarkSurfaceElevated, DarkCanvasBg)))
+                        .background(Brush.horizontalGradient(listOf(elevatedBg, cardBg)))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -623,14 +657,14 @@ fun ToolWarrantyVault() {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "GUARANTEE & RECEIPT SHIELD",
-                            color = NeonMint,
+                            color = accent,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp
                         )
                         Text(
                             text = "${warranties.size} Protected Item(s)",
-                            color = DarkTextPrimary,
+                            color = titleColor,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
@@ -640,7 +674,7 @@ fun ToolWarrantyVault() {
                             } else {
                                 "WorkManager auto-notifies 15 days before expiry"
                             },
-                            color = if (expiringSoonCount > 0) StateRedNeon else DarkTextSecondary,
+                            color = if (expiringSoonCount > 0) dangerColor else subtitleColor,
                             fontSize = 11.sp,
                             fontWeight = if (expiringSoonCount > 0) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -649,13 +683,13 @@ fun ToolWarrantyVault() {
                         modifier = Modifier
                             .size(50.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background((if (expiringSoonCount > 0) StateRedNeon else NeonMint).copy(alpha = 0.16f)),
+                            .background((if (expiringSoonCount > 0) dangerColor else accent).copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.VerifiedUser,
                             contentDescription = "Warranty Vault",
-                            tint = if (expiringSoonCount > 0) StateRedNeon else NeonMint,
+                            tint = if (expiringSoonCount > 0) dangerColor else accent,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -667,8 +701,9 @@ fun ToolWarrantyVault() {
         item {
             Surface(
                 shape = RoundedCornerShape(22.dp),
-                color = DarkCanvasBg,
-                border = BorderStroke(1.1.dp, NeonMint.copy(alpha = 0.35f)),
+                color = cardBg,
+                border = BorderStroke(if (isDark) 1.1.dp else 1.dp, defaultBorder),
+                shadowElevation = if (isDark) 0.dp else 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -679,7 +714,7 @@ fun ToolWarrantyVault() {
                 ) {
                     Text(
                         text = "Register Product Warranty",
-                        color = DarkTextPrimary,
+                        color = titleColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
@@ -694,13 +729,13 @@ fun ToolWarrantyVault() {
                         placeholder = { Text("e.g., MacBook Pro, Sony TV, Refrigerator") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeonMint,
-                            unfocusedBorderColor = NeonMint.copy(alpha = 0.35f),
-                            focusedLabelColor = NeonMint,
-                            unfocusedLabelColor = DarkTextSecondary,
-                            focusedTextColor = DarkTextPrimary,
-                            unfocusedTextColor = DarkTextPrimary,
-                            cursorColor = NeonMint
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = if (isDark) accent.copy(alpha = 0.35f) else Color(0xFFCBD5E1),
+                            focusedLabelColor = accent,
+                            unfocusedLabelColor = subtitleColor,
+                            focusedTextColor = titleColor,
+                            unfocusedTextColor = titleColor,
+                            cursorColor = accent
                         ),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -712,7 +747,7 @@ fun ToolWarrantyVault() {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = "Purchase Date",
-                            color = DarkTextSecondary,
+                            color = subtitleColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -723,18 +758,18 @@ fun ToolWarrantyVault() {
                         ) {
                             OutlinedButton(
                                 onClick = openDatePicker,
-                                border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.5f)),
+                                border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.5f) else Color(0xFFCBD5E1)),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp)
                                     .testTag("warranty_purchase_date_button")
                             ) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = NeonMint, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = WarrantyCalculator.formatDate(purchaseDateMillis),
-                                    color = DarkTextPrimary,
+                                    color = titleColor,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
@@ -756,8 +791,8 @@ fun ToolWarrantyVault() {
                             ).forEach { (label, offsetMonths) ->
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = DarkSurfaceElevated,
-                                    border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.25f)),
+                                    color = elevatedBg,
+                                    border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.25f) else Color(0xFFE2E8F0)),
                                     modifier = Modifier.clickable {
                                         val c = Calendar.getInstance()
                                         if (offsetMonths != 0) c.add(Calendar.MONTH, offsetMonths)
@@ -766,7 +801,7 @@ fun ToolWarrantyVault() {
                                 ) {
                                     Text(
                                         text = label,
-                                        color = DarkTextPrimary,
+                                        color = titleColor,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -780,7 +815,7 @@ fun ToolWarrantyVault() {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = "Warranty / Guarantee Duration",
-                            color = DarkTextSecondary,
+                            color = subtitleColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -800,10 +835,10 @@ fun ToolWarrantyVault() {
                                     },
                                     label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = NeonMint.copy(alpha = 0.18f),
-                                        selectedLabelColor = NeonMint,
-                                        containerColor = DarkSurfaceElevated,
-                                        labelColor = DarkTextSecondary
+                                        selectedContainerColor = accent.copy(alpha = if (isDark) 0.18f else 0.12f),
+                                        selectedLabelColor = accent,
+                                        containerColor = elevatedBg,
+                                        labelColor = subtitleColor
                                     ),
                                     modifier = Modifier.testTag("warranty_duration_${months}m")
                                 )
@@ -821,12 +856,12 @@ fun ToolWarrantyVault() {
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = NeonMint,
-                                unfocusedBorderColor = DarkTextSecondary.copy(alpha = 0.35f),
-                                focusedLabelColor = NeonMint,
-                                unfocusedLabelColor = DarkTextSecondary,
-                                focusedTextColor = DarkTextPrimary,
-                                unfocusedTextColor = DarkTextPrimary
+                                focusedBorderColor = accent,
+                                unfocusedBorderColor = if (isDark) subtitleColor.copy(alpha = 0.35f) else Color(0xFFCBD5E1),
+                                focusedLabelColor = accent,
+                                unfocusedLabelColor = subtitleColor,
+                                focusedTextColor = titleColor,
+                                unfocusedTextColor = titleColor
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -840,12 +875,12 @@ fun ToolWarrantyVault() {
                         label = { Text("Store / Serial Note (Optional)") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeonMint,
-                            unfocusedBorderColor = DarkTextSecondary.copy(alpha = 0.35f),
-                            focusedLabelColor = NeonMint,
-                            unfocusedLabelColor = DarkTextSecondary,
-                            focusedTextColor = DarkTextPrimary,
-                            unfocusedTextColor = DarkTextPrimary
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = if (isDark) subtitleColor.copy(alpha = 0.35f) else Color(0xFFCBD5E1),
+                            focusedLabelColor = accent,
+                            unfocusedLabelColor = subtitleColor,
+                            focusedTextColor = titleColor,
+                            unfocusedTextColor = titleColor
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -862,18 +897,18 @@ fun ToolWarrantyVault() {
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
                             },
-                            border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.45f)),
+                            border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.45f) else Color(0xFFCBD5E1)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
                                 .testTag("warranty_pick_receipt_button")
                         ) {
-                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = NeonMint, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (pendingReceiptUri != null) "Receipt Attached (Change)" else "Attach Receipt Photo",
-                                color = DarkTextPrimary,
+                                color = titleColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
@@ -885,16 +920,17 @@ fun ToolWarrantyVault() {
                                 onClick = { pendingReceiptUri = null },
                                 modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove Receipt", tint = StateRedNeon)
+                                Icon(Icons.Default.Close, contentDescription = "Remove Receipt", tint = dangerColor)
                             }
                         }
                     }
 
                     // Live Expiry Preview Pill
+                    val previewColor = severityColor(previewCountdown)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = DarkSurfaceElevated,
-                        border = BorderStroke(1.dp, Color(previewCountdown.accentColorHex).copy(alpha = 0.4f)),
+                        color = elevatedBg,
+                        border = BorderStroke(1.dp, previewColor.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -904,13 +940,13 @@ fun ToolWarrantyVault() {
                         ) {
                             Text(
                                 text = "Expires: ${WarrantyCalculator.formatDate(previewExpiryMillis)}",
-                                color = DarkTextPrimary,
+                                color = titleColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 text = previewCountdown.badgeLabel,
-                                color = Color(previewCountdown.accentColorHex),
+                                color = previewColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
@@ -920,7 +956,7 @@ fun ToolWarrantyVault() {
                     if (formError != null) {
                         Text(
                             text = formError.orEmpty(),
-                            color = StateRedNeon,
+                            color = dangerColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -929,7 +965,7 @@ fun ToolWarrantyVault() {
                     if (statusBanner != null) {
                         Text(
                             text = statusBanner.orEmpty(),
-                            color = NeonMint,
+                            color = accent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -977,8 +1013,8 @@ fun ToolWarrantyVault() {
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonMint,
-                            contentColor = DarkCanvasBg
+                            containerColor = accent,
+                            contentColor = ctaContentColor
                         ),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -1011,8 +1047,9 @@ fun ToolWarrantyVault() {
             item {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
-                    color = DarkCanvasBg,
-                    border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.2f)),
+                    color = cardBg,
+                    border = BorderStroke(1.dp, if (isDark) accent.copy(alpha = 0.2f) else Color(0xFFE2E8F0)),
+                    shadowElevation = if (isDark) 0.dp else 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -1020,16 +1057,16 @@ fun ToolWarrantyVault() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = NeonMint, modifier = Modifier.size(28.dp))
+                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = accent, modifier = Modifier.size(28.dp))
                         Text(
                             text = "No warranties saved yet",
-                            color = DarkTextPrimary,
+                            color = titleColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
                             text = "Add electronics, appliances or vehicles above to store receipts and receive an automatic 15-day alert before expiry.",
-                            color = DarkTextSecondary,
+                            color = subtitleColor,
                             fontSize = 12.sp
                         )
                     }
@@ -1038,12 +1075,13 @@ fun ToolWarrantyVault() {
         } else {
             items(warranties, key = { it.id }) { item ->
                 val countdown = WarrantyCalculator.computeCountdown(item.expiryDateMillis, nowMillis)
-                val badgeColor = Color(countdown.accentColorHex)
+                val badgeColor = severityColor(countdown)
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = DarkCanvasBg,
-                    border = BorderStroke(1.1.dp, badgeColor.copy(alpha = 0.45f)),
+                    color = cardBg,
+                    border = BorderStroke(1.dp, if (isDark) badgeColor.copy(alpha = 0.45f) else Color(0xFFE2E8F0)),
+                    shadowElevation = if (isDark) 0.dp else 1.dp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("warranty_item_card_${item.id}")
@@ -1062,7 +1100,7 @@ fun ToolWarrantyVault() {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = item.productName,
-                                    color = DarkTextPrimary,
+                                    color = titleColor,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 15.sp,
                                     maxLines = 1,
@@ -1070,19 +1108,19 @@ fun ToolWarrantyVault() {
                                 )
                                 Text(
                                     text = "Bought ${WarrantyCalculator.formatDate(item.purchaseDateMillis)} (${WarrantyCalculator.formatDurationLabel(item.warrantyMonths)})",
-                                    color = DarkTextSecondary,
+                                    color = subtitleColor,
                                     fontSize = 11.sp
                                 )
                                 Text(
                                     text = "Expires ${WarrantyCalculator.formatDate(item.expiryDateMillis)}",
-                                    color = DarkTextPrimary,
+                                    color = titleColor,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 if (item.notes.isNotBlank()) {
                                     Text(
                                         text = item.notes,
-                                        color = DarkTextSecondary,
+                                        color = subtitleColor,
                                         fontSize = 11.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -1098,7 +1136,7 @@ fun ToolWarrantyVault() {
                                 },
                                 modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Warranty", tint = StateRedNeon)
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Warranty", tint = dangerColor)
                             }
                         }
 
@@ -1110,8 +1148,8 @@ fun ToolWarrantyVault() {
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = badgeColor.copy(alpha = 0.16f),
-                                border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.6f)),
+                                color = badgeColor.copy(alpha = if (isDark) 0.16f else 0.12f),
+                                border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.55f)),
                                 modifier = Modifier.testTag("warranty_countdown_badge_${item.id}")
                             ) {
                                 Text(
@@ -1131,7 +1169,7 @@ fun ToolWarrantyVault() {
                             } else if (countdown.severity != WarrantySeverity.EXPIRED) {
                                 Text(
                                     text = "15d Alert Armed",
-                                    color = NeonMint,
+                                    color = accent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -1158,6 +1196,8 @@ private fun ReceiptThumbnailPill(
     imagePath: String,
     onClick: () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val pillAccent = if (isDark) NeonMint else LocalAccentColor.current
     val bitmap by produceState<Bitmap?>(initialValue = null, imagePath) {
         value = withContext(Dispatchers.IO) {
             runCatching {
@@ -1170,8 +1210,8 @@ private fun ReceiptThumbnailPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = DarkSurfaceElevated,
-        border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.45f)),
+        color = if (isDark) DarkSurfaceElevated else Color(0xFFF8FAFC),
+        border = BorderStroke(1.dp, if (isDark) NeonMint.copy(alpha = 0.45f) else Color(0xFFE2E8F0)),
         modifier = Modifier.height(38.dp)
     ) {
         Row(
@@ -1189,9 +1229,9 @@ private fun ReceiptThumbnailPill(
                         .clip(RoundedCornerShape(6.dp))
                 )
             } else {
-                Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = NeonMint, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = pillAccent, modifier = Modifier.size(16.dp))
             }
-            Text("View Receipt", color = NeonMint, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("View Receipt", color = pillAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -1201,6 +1241,11 @@ private fun ReceiptPreviewDialog(
     imagePath: String,
     onDismiss: () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val dialogAccent = if (isDark) NeonMint else LocalAccentColor.current
+    val dialogBg = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val titleColor = if (isDark) DarkTextPrimary else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) DarkTextSecondary else Color(0xFF475569)
     val bitmap by produceState<Bitmap?>(initialValue = null, imagePath) {
         value = withContext(Dispatchers.IO) {
             runCatching { BitmapFactory.decodeFile(imagePath) }.getOrNull()
@@ -1210,8 +1255,8 @@ private fun ReceiptPreviewDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = DarkCanvasBg,
-            border = BorderStroke(1.2.dp, NeonMint),
+            color = dialogBg,
+            border = BorderStroke(1.2.dp, if (isDark) dialogAccent else Color(0xFFE2E8F0)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -1224,9 +1269,9 @@ private fun ReceiptPreviewDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Saved Warranty Receipt", color = DarkTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Saved Warranty Receipt", color = titleColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close Receipt", tint = DarkTextPrimary)
+                        Icon(Icons.Default.Close, contentDescription = "Close Receipt", tint = titleColor)
                     }
                 }
                 if (bitmap != null) {
@@ -1240,7 +1285,7 @@ private fun ReceiptPreviewDialog(
                             .clip(RoundedCornerShape(14.dp))
                     )
                 } else {
-                    Text("Receipt preview currently unavailable.", color = DarkTextSecondary, fontSize = 12.sp)
+                    Text("Receipt preview currently unavailable.", color = subtitleColor, fontSize = 12.sp)
                 }
             }
         }

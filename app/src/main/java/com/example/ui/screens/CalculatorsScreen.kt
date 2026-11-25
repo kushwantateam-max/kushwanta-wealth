@@ -116,6 +116,7 @@ import com.example.ui.components.ToolImpulseCooldownTimer
 import com.example.ui.components.ToolWarrantyVault
 import com.example.ui.components.WarrantyVaultHubCard
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.StateGreen
 import com.example.ui.theme.StateRed
 import com.example.ui.theme.StateYellow
@@ -145,6 +146,8 @@ fun CalculatorsScreen(
     auditLogs: List<AuditLogEntity>,
     onAddGoalClick: () -> Unit,
     onFullScreenGameActiveChanged: (Boolean) -> Unit = {},
+    initialToolId: String? = null,
+    onInitialToolConsumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accentColor = LocalAccentColor.current
@@ -153,8 +156,20 @@ fun CalculatorsScreen(
     var isArenaGameActive by remember { mutableStateOf(false) }
     val isFullScreenGame = activeToolId == "mind_arena" && isArenaGameActive
 
+    LaunchedEffect(initialToolId) {
+        if (initialToolId != null) {
+            activeToolId = initialToolId
+            onInitialToolConsumed()
+        }
+    }
     LaunchedEffect(activeToolId) {
-        if (activeToolId != "mind_arena" && isArenaGameActive) {
+        val tool = activeToolId
+        if (tool != null && tool != "mind_arena") {
+            viewModel.recordFinancialToolExplored(tool)
+        } else if (tool == null) {
+            viewModel.refreshLeaderboardState()
+        }
+        if (tool != "mind_arena" && isArenaGameActive) {
             isArenaGameActive = false
         }
     }
@@ -1070,9 +1085,10 @@ fun ToolCalendarHeatmap(
     val safeSelectedIndex = selectedDayIndex.coerceIn(0, dayTotals.lastIndex)
     val maxSpend = dayTotals.maxOfOrNull { it.totalSpendUsd }?.coerceAtLeast(1.0) ?: 1.0
 
-    val goldPrimary = Color(0xFFFFD700)
-    val goldAmber = Color(0xFFF59E0B)
-    val goldDeepBg = Color(0xFF2B2106)
+    val isDark = LocalIsDarkTheme.current
+    val goldPrimary = if (isDark) Color(0xFFFFD700) else Color(0xFFB45309)
+    val goldAmber = if (isDark) Color(0xFFF59E0B) else Color(0xFFD97706)
+    val goldDeepBg = if (isDark) Color(0xFF2B2106) else Color(0xFFFFFFFF)
 
     val animatedStreak by animateIntAsState(
         targetValue = summary.goldenStreakDays,
@@ -1114,14 +1130,22 @@ fun ToolCalendarHeatmap(
                 border = BorderStroke(
                     width = 1.2.dp,
                     brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            goldPrimary.copy(alpha = glowPulse),
-                            goldAmber.copy(alpha = 0.65f),
-                            goldPrimary.copy(alpha = glowPulse)
-                        )
+                        colors = if (isDark) {
+                            listOf(
+                                goldPrimary.copy(alpha = glowPulse),
+                                goldAmber.copy(alpha = 0.65f),
+                                goldPrimary.copy(alpha = glowPulse)
+                            )
+                        } else {
+                            listOf(
+                                goldAmber.copy(alpha = 0.45f),
+                                Color(0xFFE2E8F0),
+                                goldAmber.copy(alpha = 0.45f)
+                            )
+                        }
                     )
                 ),
-                shadowElevation = 4.dp,
+                shadowElevation = if (isDark) 4.dp else 1.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("golden_days_streak_pill")
@@ -1139,8 +1163,8 @@ fun ToolCalendarHeatmap(
                                 .size(30.dp)
                                 .scale(starScale)
                                 .clip(CircleShape)
-                                .background(goldPrimary.copy(alpha = 0.20f))
-                                .border(1.dp, goldPrimary.copy(alpha = 0.6f), CircleShape),
+                                .background(goldPrimary.copy(alpha = if (isDark) 0.20f else 0.12f))
+                                .border(1.dp, goldPrimary.copy(alpha = if (isDark) 0.6f else 0.35f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -1154,7 +1178,7 @@ fun ToolCalendarHeatmap(
                         Column {
                             Text(
                                 text = "Golden Days Streak",
-                                color = Color.White,
+                                color = if (isDark) Color.White else Color(0xFF0F172A),
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 13.sp,
                                 maxLines = 1,
@@ -1162,7 +1186,7 @@ fun ToolCalendarHeatmap(
                             )
                             Text(
                                 text = "$animatedTotalGolden completed zero-spend days in view",
-                                color = goldPrimary.copy(alpha = 0.85f),
+                                color = if (isDark) goldPrimary.copy(alpha = 0.85f) else Color(0xFF475569),
                                 fontSize = 10.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1172,8 +1196,8 @@ fun ToolCalendarHeatmap(
 
                     Surface(
                         shape = RoundedCornerShape(50.dp),
-                        color = goldPrimary.copy(alpha = 0.18f),
-                        border = BorderStroke(1.dp, goldPrimary.copy(alpha = 0.55f))
+                        color = goldPrimary.copy(alpha = if (isDark) 0.18f else 0.12f),
+                        border = BorderStroke(1.dp, goldPrimary.copy(alpha = if (isDark) 0.55f else 0.35f))
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),

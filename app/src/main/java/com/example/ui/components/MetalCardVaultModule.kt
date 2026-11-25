@@ -102,9 +102,22 @@ import com.example.data.model.AccountType
 import com.example.data.model.CurrencyCode
 import com.example.data.model.TransactionType
 import com.example.data.model.TransactionWithDetails
+import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
+
+private fun finishContrastAccent(finish: MetalCardFinish, isDark: Boolean): Color {
+    if (isDark) return Color(finish.accentHex)
+    return when (finish) {
+        MetalCardFinish.CYBER_OBSIDIAN -> Color(0xFF0F172A)
+        MetalCardFinish.ELECTRIC_CYAN -> Color(0xFF00695C)
+        MetalCardFinish.ROYAL_GOLD -> Color(0xFFB45309)
+        MetalCardFinish.PLATINUM_SILVER -> Color(0xFF334155)
+        MetalCardFinish.EMERALD -> Color(0xFF059669)
+    }
+}
 
 enum class MetalCardFinish(
     val id: String,
@@ -578,6 +591,11 @@ fun MetalCardVaultSection(
     onAutoPreloadCountryCards: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val vaultPrimaryAccent = if (isDark) Color(0xFF00FFCC) else themeAccent
+    val dangerColor = if (isDark) Color(0xFFFF3366) else Color(0xFFDC2626)
+
     val quickAddPills = remember(currentCurrency) { CountryCardEngine.getQuickAddPills(currentCurrency) }
     val selectedAccount = accounts.getOrNull(pagerState.currentPage.coerceIn(0, (accounts.size - 1).coerceAtLeast(0)))
     val selectedFinish = if (selectedAccount != null) {
@@ -587,7 +605,7 @@ fun MetalCardVaultSection(
         MetalCardFinish.CYBER_OBSIDIAN
     }
     val selectedAccent by animateColorAsState(
-        targetValue = Color(selectedFinish.accentHex),
+        targetValue = finishContrastAccent(selectedFinish, isDark),
         animationSpec = tween(320),
         label = "vault_selected_accent"
     )
@@ -617,8 +635,11 @@ fun MetalCardVaultSection(
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Color(0xFF0B0C10).copy(alpha = 0.88f),
-                    border = BorderStroke(1.dp, Color(0xFF00FFCC).copy(alpha = 0.48f)),
+                    color = if (isDark) Color(0xFF0B0C10).copy(alpha = 0.88f) else Color(0xFFFFFFFF),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isDark) Color(0xFF00FFCC).copy(alpha = 0.48f) else Color(0xFFE2E8F0)
+                    ),
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
                         .testTag("vault_country_picker_pill")
@@ -630,14 +651,14 @@ fun MetalCardVaultSection(
                     ) {
                         Text(
                             text = "${currentCurrency.flag} ${currentCurrency.code} (${customCurrencySymbol.ifBlank { currentCurrency.symbol }})",
-                            color = Color(0xFF00FFCC),
+                            color = vaultPrimaryAccent,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = "Change Country & Currency",
-                            tint = Color(0xFF00FFCC),
+                            tint = vaultPrimaryAccent,
                             modifier = Modifier.size(15.dp)
                         )
                     }
@@ -658,9 +679,9 @@ fun MetalCardVaultSection(
                             .clip(CircleShape)
                             .background(
                                 when {
-                                    active && isPlusSlot -> Color(0xFF00FFCC)
+                                    active && isPlusSlot -> vaultPrimaryAccent
                                     active -> selectedAccent
-                                    isPlusSlot -> Color(0xFF00FFCC).copy(alpha = 0.4f)
+                                    isPlusSlot -> vaultPrimaryAccent.copy(alpha = 0.4f)
                                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                                 }
                             )
@@ -673,8 +694,11 @@ fun MetalCardVaultSection(
         if (accounts.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF0B0C10).copy(alpha = 0.92f),
-                border = BorderStroke(1.dp, Color(0xFF00FFCC).copy(alpha = 0.35f)),
+                color = if (isDark) Color(0xFF0B0C10).copy(alpha = 0.92f) else Color(0xFFFFFFFF),
+                border = BorderStroke(
+                    1.dp,
+                    if (isDark) Color(0xFF00FFCC).copy(alpha = 0.35f) else Color(0xFFE2E8F0)
+                ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -686,14 +710,14 @@ fun MetalCardVaultSection(
                 ) {
                     Text(
                         text = "Vault empty • Pre-load 3 ${currentCurrency.countryName} starter cards or mint below",
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF475569),
                         fontSize = 11.sp,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF00FFCC).copy(alpha = 0.18f),
+                        color = vaultPrimaryAccent.copy(alpha = if (isDark) 0.18f else 0.12f),
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .testTag("vault_preload_starter_btn")
@@ -701,7 +725,7 @@ fun MetalCardVaultSection(
                     ) {
                         Text(
                             text = "Pre-Load 3",
-                            color = Color(0xFF00FFCC),
+                            color = vaultPrimaryAccent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -775,15 +799,15 @@ fun MetalCardVaultSection(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF00FFCC).copy(alpha = 0.16f),
-                border = BorderStroke(1.dp, Color(0xFF00FFCC).copy(alpha = 0.7f)),
+                color = vaultPrimaryAccent.copy(alpha = if (isDark) 0.16f else 0.12f),
+                border = BorderStroke(1.dp, vaultPrimaryAccent.copy(alpha = 0.65f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("card_added_confirmation_banner")
             ) {
                 Text(
                     text = addedBannerMessage.orEmpty(),
-                    color = Color(0xFF00FFCC),
+                    color = vaultPrimaryAccent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -807,11 +831,14 @@ fun MetalCardVaultSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 quickAddPills.forEach { preset ->
-                    val accent = Color(preset.finish.accentHex)
+                    val dotAccent = finishContrastAccent(preset.finish, isDark)
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = Color(0xFF0B0C10).copy(alpha = 0.86f),
-                        border = BorderStroke(1.dp, accent.copy(alpha = 0.48f)),
+                        color = if (isDark) Color(0xFF0B0C10).copy(alpha = 0.86f) else Color(0xFFFFFFFF),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isDark) Color(preset.finish.accentHex).copy(alpha = 0.48f) else Color(0xFFE2E8F0)
+                        ),
                         modifier = Modifier
                             .heightIn(min = 38.dp)
                             .clip(RoundedCornerShape(999.dp))
@@ -826,12 +853,12 @@ fun MetalCardVaultSection(
                                 modifier = Modifier
                                     .size(7.dp)
                                     .clip(CircleShape)
-                                    .background(accent)
+                                    .background(dotAccent)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "${preset.pillLabel} +",
-                                color = Color.White,
+                                color = if (isDark) Color.White else Color(0xFF0F172A),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -867,14 +894,22 @@ fun MetalCardVaultSection(
             ) {
                 MetalCardFinish.entries.forEach { finishOption ->
                     val isSelected = selectedFinish == finishOption
-                    val finishAccent = Color(finishOption.accentHex)
+                    val finishAccent = finishContrastAccent(finishOption, isDark)
                     val shortFinishName = finishOption.label.substringAfter(" ")
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) Color(finishOption.primaryHex) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        color = if (isDark) {
+                            if (isSelected) Color(finishOption.primaryHex) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                        } else {
+                            if (isSelected) Color(0xFFF8FAFC) else Color(0xFFFFFFFF)
+                        },
                         border = BorderStroke(
                             width = if (isSelected) 1.3.dp else 1.dp,
-                            color = if (isSelected) finishAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                            color = if (isDark) {
+                                if (isSelected) finishAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                            } else {
+                                if (isSelected) finishAccent else Color(0xFFE2E8F0)
+                            }
                         ),
                         modifier = Modifier
                             .heightIn(min = 40.dp)
@@ -898,7 +933,11 @@ fun MetalCardVaultSection(
                                 text = shortFinishName,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                color = if (isSelected) finishAccent else MaterialTheme.colorScheme.onSurface,
+                                color = if (isDark) {
+                                    if (isSelected) finishAccent else MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    if (isSelected) finishAccent else Color(0xFF475569)
+                                },
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -912,10 +951,10 @@ fun MetalCardVaultSection(
                     .fillMaxWidth()
                     .testTag("selected_card_telemetry_panel_${selectedAccount.id}"),
                 shape = RoundedCornerShape(18.dp),
-                backgroundColor = Color(0xFF0B0C10).copy(alpha = 0.95f),
-                borderColor = selectedAccent.copy(alpha = 0.36f),
+                backgroundColor = if (isDark) Color(0xFF0B0C10).copy(alpha = 0.95f) else Color(0xFFFFFFFF),
+                borderColor = if (isDark) selectedAccent.copy(alpha = 0.36f) else Color(0xFFE2E8F0),
                 borderWidth = 1.dp,
-                elevation = 0.dp
+                elevation = if (isDark) 0.dp else 1.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -931,7 +970,7 @@ fun MetalCardVaultSection(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "${selectedAccount.name} • ${activeCardCurrency.flag} ${activeCardCurrency.code}",
-                                color = Color.White.copy(alpha = 0.72f),
+                                color = if (isDark) Color.White.copy(alpha = 0.72f) else Color(0xFF475569),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -939,7 +978,7 @@ fun MetalCardVaultSection(
                             )
                             OdometerBalanceText(
                                 text = MetalCardVaultCalculator.formatUsdInCurrency(selectedAccount.balance, activeCardCurrency, activeSym),
-                                color = Color.White,
+                                color = if (isDark) Color.White else Color(0xFF0F172A),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
@@ -950,7 +989,7 @@ fun MetalCardVaultSection(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = selectedAccent.copy(alpha = 0.16f),
+                                color = selectedAccent.copy(alpha = if (isDark) 0.16f else 0.10f),
                                 border = BorderStroke(1.dp, selectedAccent.copy(alpha = 0.45f)),
                                 modifier = Modifier
                                     .heightIn(min = 38.dp)
@@ -969,8 +1008,8 @@ fun MetalCardVaultSection(
                             }
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFFF3366).copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Color(0xFFFF3366).copy(alpha = 0.45f)),
+                                color = dangerColor.copy(alpha = if (isDark) 0.15f else 0.10f),
+                                border = BorderStroke(1.dp, dangerColor.copy(alpha = 0.45f)),
                                 modifier = Modifier
                                     .heightIn(min = 38.dp)
                                     .clip(RoundedCornerShape(10.dp))
@@ -981,9 +1020,9 @@ fun MetalCardVaultSection(
                                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete Card", tint = Color(0xFFFF3366), modifier = Modifier.size(14.dp))
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Card", tint = dangerColor, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Delete", color = Color(0xFFFF3366), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Delete", color = dangerColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -997,7 +1036,7 @@ fun MetalCardVaultSection(
                         ) {
                             Text(
                                 text = activeTelemetry.limitLabel,
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = if (isDark) Color.White.copy(alpha = 0.65f) else Color(0xFF475569),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1014,7 +1053,7 @@ fun MetalCardVaultSection(
                                 .fillMaxWidth()
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(999.dp))
-                                .background(Color.White.copy(alpha = 0.12f))
+                                .background(if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFE2E8F0))
                         ) {
                             Box(
                                 modifier = Modifier
@@ -1023,7 +1062,11 @@ fun MetalCardVaultSection(
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(
                                         Brush.horizontalGradient(
-                                            colors = listOf(selectedAccent.copy(alpha = 0.7f), selectedAccent, Color.White)
+                                            colors = if (isDark) {
+                                                listOf(selectedAccent.copy(alpha = 0.7f), selectedAccent, Color.White)
+                                            } else {
+                                                listOf(selectedAccent.copy(alpha = 0.7f), selectedAccent)
+                                            }
                                         )
                                     )
                             )
@@ -1037,19 +1080,19 @@ fun MetalCardVaultSection(
                     ) {
                         Text(
                             text = "Inflow: +${MetalCardVaultCalculator.formatUsdInCurrency(activeTelemetry.inflowUsd, activeCardCurrency, activeSym)}",
-                            color = Color(0xFF00FFCC),
+                            color = if (isDark) Color(0xFF00FFCC) else Color(0xFF059669),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Outflow: -${MetalCardVaultCalculator.formatUsdInCurrency(activeTelemetry.outflowUsd, activeCardCurrency, activeSym)}",
-                            color = Color(0xFFFF3366),
+                            color = dangerColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${activeTxs.size} logs",
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = if (isDark) Color.White.copy(alpha = 0.8f) else Color(0xFF475569),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -1068,7 +1111,8 @@ fun AddCustomMetalCardSlot(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cyan = Color(0xFF00FFCC)
+    val isDark = LocalIsDarkTheme.current
+    val cyan = if (isDark) Color(0xFF00FFCC) else LocalAccentColor.current
     Box(
         modifier = modifier
             .height(216.dp)
@@ -1080,12 +1124,22 @@ fun AddCustomMetalCardSlot(
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF0B0C10).copy(alpha = 0.94f), Color(0xFF0F2027).copy(alpha = 0.92f))
+                    if (isDark) {
+                        listOf(Color(0xFF0B0C10).copy(alpha = 0.94f), Color(0xFF0F2027).copy(alpha = 0.92f))
+                    } else {
+                        listOf(Color(0xFFFFFFFF), Color(0xFFF8FAFC))
+                    }
                 )
             )
             .border(
                 width = 1.5.dp,
-                brush = Brush.linearGradient(listOf(cyan, cyan.copy(alpha = 0.35f), Color.White.copy(alpha = 0.4f))),
+                brush = Brush.linearGradient(
+                    if (isDark) {
+                        listOf(cyan, cyan.copy(alpha = 0.35f), Color.White.copy(alpha = 0.4f))
+                    } else {
+                        listOf(Color(0xFFE2E8F0), cyan.copy(alpha = 0.45f), Color(0xFFE2E8F0))
+                    }
+                ),
                 shape = RoundedCornerShape(24.dp)
             )
             .clickable { onClick() },
@@ -1098,7 +1152,7 @@ fun AddCustomMetalCardSlot(
         ) {
             Surface(
                 shape = CircleShape,
-                color = cyan.copy(alpha = 0.16f),
+                color = cyan.copy(alpha = if (isDark) 0.16f else 0.12f),
                 border = BorderStroke(1.5.dp, cyan),
                 modifier = Modifier.size(56.dp)
             ) {
@@ -1119,7 +1173,7 @@ fun AddCustomMetalCardSlot(
             )
             Text(
                 text = "Custom bank name, ${currentCurrency.code} / any currency & monthly spending limit",
-                color = Color.White.copy(alpha = 0.72f),
+                color = if (isDark) Color.White.copy(alpha = 0.72f) else Color(0xFF475569),
                 fontSize = 11.sp
             )
         }
@@ -1132,6 +1186,8 @@ fun CountryCurrencyPickerDialog(
     onSelect: (CurrencyCode) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val pickerAccent = if (isDark) Color(0xFF00FFCC) else LocalAccentColor.current
     var query by remember { mutableStateOf("") }
     val filtered = remember(query) {
         if (query.isBlank()) {
@@ -1150,7 +1206,7 @@ fun CountryCurrencyPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Public, contentDescription = null, tint = Color(0xFF00FFCC), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Public, contentDescription = null, tint = pickerAccent, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Select Country & Currency", fontWeight = FontWeight.Bold, fontSize = 17.sp)
             }
@@ -1174,10 +1230,14 @@ fun CountryCurrencyPickerDialog(
                         val selected = code == currentCurrency
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (selected) Color(0xFF00FFCC).copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            color = if (selected) {
+                                pickerAccent.copy(alpha = if (isDark) 0.16f else 0.12f)
+                            } else {
+                                if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f) else Color(0xFFF8FAFC)
+                            },
                             border = BorderStroke(
                                 1.dp,
-                                if (selected) Color(0xFF00FFCC) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                if (selected) pickerAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1203,7 +1263,7 @@ fun CountryCurrencyPickerDialog(
                                 Text(
                                     text = code.symbol,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (selected) Color(0xFF00FFCC) else MaterialTheme.colorScheme.primary,
+                                    color = if (selected) pickerAccent else MaterialTheme.colorScheme.primary,
                                     fontSize = 14.sp
                                 )
                             }
@@ -1232,6 +1292,10 @@ fun AddCustomMetalCardDialog(
     ) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val dialogAccent = if (isDark) Color(0xFF00FFCC) else LocalAccentColor.current
+    val dangerColor = if (isDark) Color(0xFFFF3366) else Color(0xFFDC2626)
+
     var name by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(AccountType.BANK) }
     var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
@@ -1274,13 +1338,15 @@ fun AddCustomMetalCardDialog(
                         val sel = t == selectedType
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(0xFF00FFCC).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (sel) dialogAccent.copy(alpha = if (isDark) 0.2f else 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (sel) dialogAccent else Color.Transparent),
                             modifier = Modifier.clickable { selectedType = t }
                         ) {
                             Text(
                                 text = t.name,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
+                                color = if (sel) dialogAccent else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -1296,13 +1362,15 @@ fun AddCustomMetalCardDialog(
                         val sel = c == selectedCurrency
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(0xFF00FFCC).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (sel) dialogAccent.copy(alpha = if (isDark) 0.2f else 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (sel) dialogAccent else Color.Transparent),
                             modifier = Modifier.clickable { selectedCurrency = c }
                         ) {
                             Text(
                                 text = "${c.flag} ${c.code} (${c.symbol})",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
+                                color = if (sel) dialogAccent else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -1343,11 +1411,15 @@ fun AddCustomMetalCardDialog(
                 ) {
                     MetalCardFinish.entries.forEach { f ->
                         val sel = f == selectedFinish
-                        val accent = Color(f.accentHex)
+                        val accent = finishContrastAccent(f, isDark)
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(f.primaryHex) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(1.dp, if (sel) accent else Color.Transparent),
+                            color = if (isDark) {
+                                if (sel) Color(f.primaryHex) else MaterialTheme.colorScheme.surfaceVariant
+                            } else {
+                                if (sel) Color(0xFFF8FAFC) else Color(0xFFFFFFFF)
+                            },
+                            border = BorderStroke(1.dp, if (sel) accent else if (isDark) Color.Transparent else Color(0xFFE2E8F0)),
                             modifier = Modifier.clickable { selectedFinish = f }
                         ) {
                             Text(
@@ -1372,8 +1444,8 @@ fun AddCustomMetalCardDialog(
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00FFCC),
-                    contentColor = Color(0xFF0B0C10)
+                    containerColor = dialogAccent,
+                    contentColor = if (isDark) Color(0xFF0B0C10) else Color.White
                 ),
                 modifier = Modifier.testTag("confirm_mint_custom_card")
             ) {
@@ -1405,6 +1477,10 @@ fun EditManageMetalCardDialog(
     onDelete: (AccountEntity) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val dialogAccent = if (isDark) Color(0xFF00FFCC) else LocalAccentColor.current
+    val dangerColor = if (isDark) Color(0xFFFF3366) else Color(0xFFDC2626)
+
     var name by remember { mutableStateOf(account.name) }
     var selectedType by remember { mutableStateOf(account.type) }
     var selectedCurrency by remember { mutableStateOf(currentCardCurrency) }
@@ -1449,10 +1525,17 @@ fun EditManageMetalCardDialog(
                         val sel = t == selectedType
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(0xFF00FFCC).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (sel) dialogAccent.copy(alpha = if (isDark) 0.2f else 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (sel) dialogAccent else Color.Transparent),
                             modifier = Modifier.clickable { selectedType = t }
                         ) {
-                            Text(t.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
+                            Text(
+                                text = t.name,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (sel) dialogAccent else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
@@ -1464,10 +1547,17 @@ fun EditManageMetalCardDialog(
                         val sel = c == selectedCurrency
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(0xFF00FFCC).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (sel) dialogAccent.copy(alpha = if (isDark) 0.2f else 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (sel) dialogAccent else Color.Transparent),
                             modifier = Modifier.clickable { selectedCurrency = c }
                         ) {
-                            Text("${c.flag} ${c.code}", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
+                            Text(
+                                text = "${c.flag} ${c.code}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (sel) dialogAccent else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
@@ -1501,11 +1591,15 @@ fun EditManageMetalCardDialog(
                 ) {
                     MetalCardFinish.entries.forEach { f ->
                         val sel = f == selectedFinish
-                        val accent = Color(f.accentHex)
+                        val accent = finishContrastAccent(f, isDark)
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (sel) Color(f.primaryHex) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(1.dp, if (sel) accent else Color.Transparent),
+                            color = if (isDark) {
+                                if (sel) Color(f.primaryHex) else MaterialTheme.colorScheme.surfaceVariant
+                            } else {
+                                if (sel) Color(0xFFF8FAFC) else Color(0xFFFFFFFF)
+                            },
+                            border = BorderStroke(1.dp, if (sel) accent else if (isDark) Color.Transparent else Color(0xFFE2E8F0)),
                             modifier = Modifier.clickable { selectedFinish = f }
                         ) {
                             Text(
@@ -1536,7 +1630,7 @@ fun EditManageMetalCardDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Delete This Card (Undo Available)", color = Color(0xFFFF3366), fontWeight = FontWeight.Bold)
+                    Text("Delete This Card (Undo Available)", color = dangerColor, fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -1549,7 +1643,10 @@ fun EditManageMetalCardDialog(
                     onSave(account, cleanName, selectedType, selectedCurrency, bal, lim, last4, selectedFinish, setAsPrimary)
                     onDismiss()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FFCC), contentColor = Color(0xFF0B0C10))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = dialogAccent,
+                    contentColor = if (isDark) Color(0xFF0B0C10) else Color.White
+                )
             ) {
                 Text("Save Changes", fontWeight = FontWeight.ExtraBold)
             }

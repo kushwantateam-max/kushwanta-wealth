@@ -9,6 +9,17 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Opt out of Android Privacy Sandbox AdServices so WebView/AdMob do not bind MEASUREMENT_SERVICE on devices/emulators where AdServices is disabled -->
+    <uses-permission
+        android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_ADSERVICES_TOPICS"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_ADSERVICES_AD_ID"
+        tools:node="remove" />
+
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
@@ -42,8 +53,7 @@
 
         <property
             android:name="android.adservices.AD_SERVICES_CONFIG"
-            android:resource="@xml/gma_ad_services_config"
-            tools:replace="android:resource" />
+            tools:node="remove" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

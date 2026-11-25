@@ -100,6 +100,8 @@ import com.example.data.model.TransactionType
 import com.example.ui.theme.DarkCanvasBg
 import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.NeonMint
 import com.example.ui.theme.StateGreen
 import com.example.ui.theme.StateRed
@@ -761,6 +763,11 @@ fun GlowingNeonMicButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val fabAccent = if (isDark) NeonMint else LocalAccentColor.current
+    val fabContainer = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val fabBorder = if (isDark) NeonMint else fabAccent.copy(alpha = 0.45f)
+
     val infiniteTransition = rememberInfiniteTransition(label = "micNeonGlow")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
@@ -793,7 +800,7 @@ fun GlowingNeonMicButton(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            NeonMint.copy(alpha = glowAlpha),
+                            fabAccent.copy(alpha = if (isDark) glowAlpha else glowAlpha * 0.45f),
                             Color.Transparent
                         )
                     )
@@ -801,19 +808,19 @@ fun GlowingNeonMicButton(
         )
         FloatingActionButton(
             onClick = onClick,
-            containerColor = DarkCanvasBg,
-            contentColor = NeonMint,
+            containerColor = fabContainer,
+            contentColor = fabAccent,
             shape = CircleShape,
             elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
             modifier = Modifier
                 .size(52.dp)
-                .border(1.5.dp, NeonMint, CircleShape)
+                .border(1.5.dp, fabBorder, CircleShape)
                 .testTag("voice_mic_fab")
         ) {
             Icon(
                 imageVector = Icons.Default.Mic,
                 contentDescription = "Global Voice Transaction Entry",
-                tint = NeonMint,
+                tint = fabAccent,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -955,6 +962,21 @@ fun VoiceTransactionBottomSheet(
         "15000 Salary HDFC"
     )
 
+    val isDark = LocalIsDarkTheme.current
+    val themeAccent = LocalAccentColor.current
+    val accent = if (isDark) NeonMint else themeAccent
+    val secondaryAccent = if (isDark) ElectricCyan else Color(0xFF0284C7)
+    val sheetBg = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val cardBg = if (isDark) DarkSurfaceElevated else Color(0xFFF8FAFC)
+    val innerCardBg = if (isDark) DarkCanvasBg else Color(0xFFFFFFFF)
+    val sheetBorder = if (isDark) NeonMint.copy(alpha = 0.45f) else Color(0xFFE2E8F0)
+    val cardBorder = if (isDark) Color(0xFF283548) else Color(0xFFE2E8F0)
+    val titleColor = if (isDark) Color.White else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+    val mutedTextColor = Color(0xFF64748B)
+    val pillChipBg = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0)
+    val amountErrorAccent = if (isDark) StateRedNeon else StateRed
+
     Dialog(
         onDismissRequest = {
             speechWrapper.stopAndDestroy()
@@ -965,7 +987,7 @@ fun VoiceTransactionBottomSheet(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.62f))
+                .background(Color.Black.copy(alpha = if (isDark) 0.62f else 0.42f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -977,8 +999,8 @@ fun VoiceTransactionBottomSheet(
         ) {
             Surface(
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = DarkCanvasBg,
-                border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.45f)),
+                color = sheetBg,
+                border = BorderStroke(1.dp, sheetBorder),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(
@@ -1006,13 +1028,13 @@ fun VoiceTransactionBottomSheet(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(NeonMint.copy(alpha = 0.14f)),
+                                    .background(accent.copy(alpha = 0.14f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.GraphicEq,
                                     contentDescription = null,
-                                    tint = NeonMint,
+                                    tint = accent,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -1020,13 +1042,13 @@ fun VoiceTransactionBottomSheet(
                             Column {
                                 Text(
                                     text = "Global Smart Voice Engine",
-                                    color = Color.White,
+                                    color = titleColor,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 16.sp
                                 )
                                 Text(
                                     text = "${Locale.getDefault().displayName} • Streaming • ₹0",
-                                    color = NeonMint,
+                                    color = accent,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -1038,7 +1060,7 @@ fun VoiceTransactionBottomSheet(
                                 onDismiss()
                             }
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "Close Voice Sheet", tint = Color.White)
+                            Icon(Icons.Default.Close, contentDescription = "Close Voice Sheet", tint = titleColor)
                         }
                     }
 
@@ -1056,12 +1078,12 @@ fun VoiceTransactionBottomSheet(
                                     .size(76.dp)
                                     .scale(animatedWaveScale)
                                     .clip(CircleShape)
-                                    .background(NeonMint.copy(alpha = if (isListening) 0.28f else 0.10f))
+                                    .background(accent.copy(alpha = if (isListening) 0.28f else 0.10f))
                             )
                             Surface(
                                 shape = CircleShape,
-                                color = if (isListening) NeonMint else DarkSurfaceElevated,
-                                border = BorderStroke(2.dp, NeonMint),
+                                color = if (isListening) accent else cardBg,
+                                border = BorderStroke(2.dp, accent),
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clickable {
@@ -1085,7 +1107,7 @@ fun VoiceTransactionBottomSheet(
                                     Icon(
                                         imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
                                         contentDescription = if (isListening) "Stop Listening" else "Tap Mic to Speak",
-                                        tint = if (isListening) DarkCanvasBg else NeonMint,
+                                        tint = if (isListening) (if (isDark) DarkCanvasBg else Color.White) else accent,
                                         modifier = Modifier.size(28.dp)
                                     )
                                 }
@@ -1094,11 +1116,12 @@ fun VoiceTransactionBottomSheet(
                         Spacer(modifier = Modifier.height(6.dp))
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (fallbackActive || isListening) NeonMint.copy(alpha = 0.12f) else DarkSurfaceElevated
+                            color = if (fallbackActive || isListening) accent.copy(alpha = 0.12f) else cardBg,
+                            border = if (isDark) null else BorderStroke(1.dp, cardBorder)
                         ) {
                             Text(
                                 text = statusMessage,
-                                color = if (isListening || fallbackActive) NeonMint else Color(0xFF94A3B8),
+                                color = if (isListening || fallbackActive) accent else subtitleColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -1111,18 +1134,18 @@ fun VoiceTransactionBottomSheet(
                     OutlinedTextField(
                         value = spokenText,
                         onValueChange = { spokenText = it },
-                        label = { Text("Neon Command Box", color = NeonMint, fontWeight = FontWeight.SemiBold) },
-                        placeholder = { Text("Speak or type (e.g. '500 UPI Petrol', 'दो सौ चाय')", color = Color(0xFF64748B)) },
+                        label = { Text("Neon Command Box", color = accent, fontWeight = FontWeight.SemiBold) },
+                        placeholder = { Text("Speak or type (e.g. '500 UPI Petrol', 'दो सौ चाय')", color = mutedTextColor) },
                         singleLine = false,
                         maxLines = 3,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = NeonMint,
-                            unfocusedBorderColor = NeonMint.copy(alpha = 0.55f),
-                            cursorColor = NeonMint,
-                            focusedContainerColor = DarkSurfaceElevated,
-                            unfocusedContainerColor = DarkSurfaceElevated
+                            focusedTextColor = titleColor,
+                            unfocusedTextColor = titleColor,
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = if (isDark) NeonMint.copy(alpha = 0.55f) else Color(0xFFCBD5E1),
+                            cursorColor = accent,
+                            focusedContainerColor = cardBg,
+                            unfocusedContainerColor = cardBg
                         ),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -1139,7 +1162,7 @@ fun VoiceTransactionBottomSheet(
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 text = "Live Parsed Preview",
-                                color = NeonMint,
+                                color = accent,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1163,7 +1186,7 @@ fun VoiceTransactionBottomSheet(
                                     VoicePreviewPill(
                                         icon = Icons.Default.Payments,
                                         text = amountLabel,
-                                        accent = if (parsed.amountDisplay > 0.0) NeonMint else StateRedNeon,
+                                        accent = if (parsed.amountDisplay > 0.0) accent else amountErrorAccent,
                                         modifier = Modifier.weight(1f),
                                         testTag = "voice_pill_amount"
                                     )
@@ -1186,14 +1209,14 @@ fun VoiceTransactionBottomSheet(
                                     VoicePreviewPill(
                                         icon = Icons.Default.Category,
                                         text = matchedCategory?.name ?: "${parsed.categoryHint}${if (willAutoCreateCategory) " • NEW" else ""}",
-                                        accent = NeonMint,
+                                        accent = accent,
                                         modifier = Modifier.weight(1f),
                                         testTag = "voice_pill_category"
                                     )
                                     VoicePreviewPill(
                                         icon = Icons.Default.AccountBalanceWallet,
                                         text = matchedAccount?.name ?: "${parsed.paymentModeLabel}${if (willAutoCreateWallet) " • NEW" else ""}",
-                                        accent = ElectricCyan,
+                                        accent = secondaryAccent,
                                         modifier = Modifier.weight(1f),
                                         testTag = "voice_pill_wallet"
                                     )
@@ -1206,7 +1229,7 @@ fun VoiceTransactionBottomSheet(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = "1-Tap Neon Command Chips",
-                            color = Color(0xFF94A3B8),
+                            color = subtitleColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -1220,8 +1243,8 @@ fun VoiceTransactionBottomSheet(
                                 val selected = spokenText.equals(sample, ignoreCase = true)
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = if (selected) NeonMint.copy(alpha = 0.22f) else DarkSurfaceElevated,
-                                    border = BorderStroke(1.dp, if (selected) NeonMint else Color(0xFF283548)),
+                                    color = if (selected) accent.copy(alpha = if (isDark) 0.22f else 0.12f) else cardBg,
+                                    border = BorderStroke(1.dp, if (selected) accent else cardBorder),
                                     modifier = Modifier
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1232,7 +1255,7 @@ fun VoiceTransactionBottomSheet(
                                 ) {
                                     Text(
                                         text = sample,
-                                        color = if (selected) NeonMint else Color(0xFFE2E8F0),
+                                        color = if (selected) accent else titleColor,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
@@ -1245,8 +1268,8 @@ fun VoiceTransactionBottomSheet(
                     // Live Parsed Transaction Summary Card
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = DarkSurfaceElevated,
-                        border = BorderStroke(1.dp, NeonMint.copy(alpha = 0.35f)),
+                        color = cardBg,
+                        border = BorderStroke(1.dp, if (isDark) NeonMint.copy(alpha = 0.35f) else cardBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -1259,14 +1282,14 @@ fun VoiceTransactionBottomSheet(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Detected Amount", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("Detected Amount", color = subtitleColor, fontSize = 11.sp)
                                     Text(
                                         text = if (parsed.amountDisplay > 0.0) {
                                             "${viewModel.activeSymbol()}${String.format(Locale.US, "%.2f", parsed.amountDisplay)}"
                                         } else {
                                             "${viewModel.activeSymbol()}0.00"
                                         },
-                                        color = if (parsed.amountDisplay > 0.0) NeonMint else Color(0xFF64748B),
+                                        color = if (parsed.amountDisplay > 0.0) accent else mutedTextColor,
                                         fontSize = 24.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
@@ -1280,7 +1303,7 @@ fun VoiceTransactionBottomSheet(
                                             color = when {
                                                 selected && txType == TransactionType.EXPENSE -> StateRed
                                                 selected && txType == TransactionType.INCOME -> StateGreen
-                                                else -> Color(0xFF1E293B)
+                                                else -> pillChipBg
                                             },
                                             modifier = Modifier.clickable {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1289,7 +1312,7 @@ fun VoiceTransactionBottomSheet(
                                         ) {
                                             Text(
                                                 text = if (txType == TransactionType.EXPENSE) "Expense" else "Income",
-                                                color = Color.White,
+                                                color = if (selected || isDark) Color.White else titleColor,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -1305,7 +1328,8 @@ fun VoiceTransactionBottomSheet(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = DarkCanvasBg,
+                                    color = innerCardBg,
+                                    border = if (isDark) null else BorderStroke(1.dp, cardBorder),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Column(modifier = Modifier.padding(10.dp)) {
@@ -1313,16 +1337,16 @@ fun VoiceTransactionBottomSheet(
                                             Icon(
                                                 imageVector = CategoryIconHelper.iconFor(matchedCategory?.iconName ?: parsed.suggestedIconName),
                                                 contentDescription = null,
-                                                tint = NeonMint,
+                                                tint = accent,
                                                 modifier = Modifier.size(15.dp)
                                             )
                                             Spacer(modifier = Modifier.width(5.dp))
-                                            Text("Section", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                            Text("Section", color = subtitleColor, fontSize = 10.sp)
                                         }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = matchedCategory?.name ?: parsed.categoryHint,
-                                            color = Color.White,
+                                            color = titleColor,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
                                             maxLines = 1,
@@ -1332,15 +1356,15 @@ fun VoiceTransactionBottomSheet(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
-                                                color = NeonMint.copy(alpha = 0.16f)
+                                                color = accent.copy(alpha = 0.14f)
                                             ) {
                                                 Row(
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = NeonMint, modifier = Modifier.size(10.dp))
+                                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = accent, modifier = Modifier.size(10.dp))
                                                     Spacer(modifier = Modifier.width(3.dp))
-                                                    Text("AUTO-CREATE", color = NeonMint, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
+                                                    Text("AUTO-CREATE", color = accent, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
                                                 }
                                             }
                                         }
@@ -1349,7 +1373,8 @@ fun VoiceTransactionBottomSheet(
 
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = DarkCanvasBg,
+                                    color = innerCardBg,
+                                    border = if (isDark) null else BorderStroke(1.dp, cardBorder),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Column(modifier = Modifier.padding(10.dp)) {
@@ -1357,16 +1382,16 @@ fun VoiceTransactionBottomSheet(
                                             Icon(
                                                 imageVector = Icons.Default.AccountBalanceWallet,
                                                 contentDescription = null,
-                                                tint = ElectricCyan,
+                                                tint = secondaryAccent,
                                                 modifier = Modifier.size(15.dp)
                                             )
                                             Spacer(modifier = Modifier.width(5.dp))
-                                            Text("Mode / Wallet", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                            Text("Mode / Wallet", color = subtitleColor, fontSize = 10.sp)
                                         }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = matchedAccount?.name ?: parsed.paymentModeLabel,
-                                            color = Color.White,
+                                            color = titleColor,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
                                             maxLines = 1,
@@ -1376,11 +1401,11 @@ fun VoiceTransactionBottomSheet(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
-                                                color = ElectricCyan.copy(alpha = 0.16f)
+                                                color = secondaryAccent.copy(alpha = 0.14f)
                                             ) {
                                                 Text(
                                                     text = "AUTO-CREATE WALLET",
-                                                    color = ElectricCyan,
+                                                    color = secondaryAccent,
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.ExtraBold,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1403,17 +1428,17 @@ fun VoiceTransactionBottomSheet(
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 safeStartSpeech()
                             },
-                            border = BorderStroke(1.dp, NeonMint),
+                            border = BorderStroke(1.dp, accent),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = null, tint = NeonMint, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Mic, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (isListening) "Restart Mic" else "Speak",
-                                color = NeonMint,
+                                color = accent,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
@@ -1453,12 +1478,12 @@ fun VoiceTransactionBottomSheet(
                             },
                             enabled = isSaveEnabled,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = NeonMint,
-                                contentColor = DarkCanvasBg,
-                                disabledContainerColor = Color(0xFF1E293B),
-                                disabledContentColor = Color(0xFF64748B)
+                                containerColor = accent,
+                                contentColor = if (isDark) DarkCanvasBg else Color.White,
+                                disabledContainerColor = pillChipBg,
+                                disabledContentColor = mutedTextColor
                             ),
-                            border = if (isSaveEnabled) BorderStroke(1.5.dp, ElectricCyan) else null,
+                            border = if (isSaveEnabled && isDark) BorderStroke(1.5.dp, ElectricCyan) else null,
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
                                 .weight(1.3f)
@@ -1485,10 +1510,11 @@ private fun VoicePreviewPill(
     onClick: (() -> Unit)? = null,
     testTag: String
 ) {
+    val isDark = LocalIsDarkTheme.current
     Surface(
         shape = RoundedCornerShape(50.dp),
-        color = accent.copy(alpha = 0.14f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
+        color = accent.copy(alpha = if (isDark) 0.14f else 0.10f),
+        border = BorderStroke(1.dp, accent.copy(alpha = if (isDark) 0.55f else 0.35f)),
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(testTag)
@@ -1506,7 +1532,7 @@ private fun VoicePreviewPill(
             Spacer(modifier = Modifier.width(5.dp))
             Text(
                 text = text,
-                color = Color.White,
+                color = if (isDark) Color.White else Color(0xFF0F172A),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

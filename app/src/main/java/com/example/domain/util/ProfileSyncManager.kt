@@ -51,15 +51,37 @@ object ProfileSyncManager {
         }
     }.getOrDefault(false)
 
+    private fun extractBestPhotoUrl(user: com.google.firebase.auth.FirebaseUser?): String? {
+        if (user == null) return null
+        val raw = user.photoUrl?.toString()?.takeIf { it.isNotBlank() }
+            ?: user.providerData.firstNotNullOfOrNull { info ->
+                info.photoUrl?.toString()?.takeIf { it.isNotBlank() }
+            }
+        return upgradeGooglePhotoResolution(raw)
+    }
+
+    private fun upgradeGooglePhotoResolution(url: String?): String? {
+        val clean = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return clean
+            .replace("=s96-c", "=s256-c")
+            .replace("/s96-c/", "/s256-c/")
+    }
+
     fun syncCurrentFirebaseUser(context: Context, prefs: AppPreferences): Boolean = runCatching {
         if (!isFirebaseAvailable(context)) return@runCatching false
         val user = FirebaseAuth.getInstance().currentUser ?: return@runCatching false
-        prefs.saveGoogleSyncedProfile(
-            displayName = user.displayName,
-            email = user.email,
-            photoUrl = user.photoUrl?.toString()
-        )
-        prefs.markGoogleAuthCompleted()
+        val resolvedPhoto = extractBestPhotoUrl(user)
+        val hasGoogleProvider = user.providerData.any { it.providerId == GoogleAuthProvider.PROVIDER_ID }
+        if (hasGoogleProvider || resolvedPhoto != null) {
+            prefs.saveGoogleSyncedProfile(
+                displayName = user.displayName,
+                email = user.email,
+                photoUrl = resolvedPhoto
+            )
+            if (hasGoogleProvider) {
+                prefs.markGoogleAuthCompleted()
+            }
+        }
         true
     }.getOrDefault(false)
 
@@ -112,8 +134,8 @@ object ProfileSyncManager {
                         ?: googleCredential.displayName
                         ?: "Koshvanta Member"
                     val email = authResultUser?.email ?: googleCredential.id
-                    val photo = authResultUser?.photoUrl?.toString()
-                        ?: googleCredential.profilePictureUri?.toString()
+                    val photo = extractBestPhotoUrl(authResultUser)
+                        ?: upgradeGooglePhotoResolution(googleCredential.profilePictureUri?.toString())
                     prefs.saveGoogleSyncedProfile(
                         displayName = name,
                         email = email,
@@ -161,7 +183,12 @@ object ProfileSyncManager {
                         val user = res.user
                         val name = user?.displayName
                         val resolvedEmail = user?.email ?: cleanEmail
-                        prefs.saveEmailSignedInProfile(displayName = name, email = resolvedEmail)
+                        val resolvedPhoto = extractBestPhotoUrl(user)
+                        prefs.saveEmailSignedInProfile(
+                            displayName = name,
+                            email = resolvedEmail,
+                            photoUrl = resolvedPhoto
+                        )
                         if (cont.isActive) {
                             cont.resume(EmailAuthOutcome.Success(prefs.profileDisplayName.value, resolvedEmail))
                         }

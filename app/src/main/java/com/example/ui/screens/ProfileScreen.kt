@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -97,6 +98,7 @@ import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalGoldAccentColor
 import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.NeonMint
+import com.example.ui.theme.RoyalGold
 import com.example.ui.theme.StateGreen
 import com.example.ui.viewmodel.KoshvantaViewModel
 
@@ -110,6 +112,7 @@ fun ProfileScreen(
     currentBook: FinancialBook,
     currentCurrency: CurrencyCode,
     onOpenSettings: () -> Unit,
+    onOpenEliteHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -418,15 +421,24 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        val avatarRingBrush = remember(isDark) {
+                            Brush.linearGradient(
+                                if (isDark) listOf(RoyalGold, NeonMint)
+                                else listOf(Color(0xFFB45309), Color(0xFF00695C))
+                            )
+                        }
                         Box(
-                            modifier = Modifier.size(72.dp),
+                            modifier = Modifier.size(76.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(70.dp)
+                                    .size(72.dp)
                                     .clip(CircleShape)
                                     .background(if (isDark) DarkCanvasBg else Color(0xFFF1F5F9))
+                                    .border(2.2.dp, avatarRingBrush, CircleShape)
+                                    .padding(2.5.dp)
+                                    .clip(CircleShape)
                                     .clickable { showEditDialog = true },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -600,6 +612,15 @@ fun ProfileScreen(
                         .testTag("profile_stat_rank")
                 )
             }
+        }
+
+        // 3b. Kushwanta Elite Hub Community Gateway
+        item {
+            EliteHubEntryCard(
+                lang = lang,
+                onClick = onOpenEliteHub,
+                modifier = Modifier.testTag("profile_elite_hub_card")
+            )
         }
 
         // 4. Achievement Badges Section

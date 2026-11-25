@@ -380,9 +380,16 @@ class AppPreferences(context: Context) {
     ) {
         val cleanEmail = email.orEmpty().trim()
         val resolvedName = displayName?.trim()?.takeIf { it.isNotBlank() }
-            ?: _profileDisplayName.value.takeIf { it.isNotBlank() }
-            ?: "Koshvanta Member"
-        val resolvedPhoto = photoUrl?.trim()?.takeIf { it.isNotBlank() } ?: _profilePhotoUri.value
+            ?: _profileDisplayName.value.takeIf { it.isNotBlank() && it != "Koshvanta Explorer" }
+            ?: cleanEmail.substringBefore("@").replaceFirstChar { it.uppercase() }.ifBlank { "Koshvanta Explorer" }
+        val cleanPhoto = photoUrl?.trim()?.takeIf { it.isNotBlank() }
+        val existingPhoto = _profilePhotoUri.value
+        val isExistingLocalCustom = existingPhoto.startsWith("file:") || existingPhoto.startsWith("content:")
+        val resolvedPhoto = when {
+            cleanPhoto != null && !isExistingLocalCustom -> cleanPhoto
+            existingPhoto.isNotBlank() -> existingPhoto
+            else -> cleanPhoto.orEmpty()
+        }
         prefs.edit()
             .putString(KEY_PROFILE_DISPLAY_NAME, resolvedName)
             .putString(KEY_PROFILE_EMAIL, cleanEmail)
@@ -431,19 +438,31 @@ class AppPreferences(context: Context) {
         _authProvider.value = "GOOGLE"
     }
 
-    fun saveEmailSignedInProfile(displayName: String?, email: String) {
+    fun saveEmailSignedInProfile(
+        displayName: String?,
+        email: String,
+        photoUrl: String? = null
+    ) {
         val cleanEmail = email.trim()
         val cleanName = displayName?.trim()?.takeIf { it.isNotBlank() }
             ?: cleanEmail.substringBefore("@").replaceFirstChar { it.uppercase() }.ifBlank { "Koshvanta Member" }
+        val cleanPhoto = photoUrl?.trim()?.takeIf { it.isNotBlank() }
+        val resolvedPhoto = cleanPhoto ?: _profilePhotoUri.value
         prefs.edit()
             .putString(KEY_PROFILE_DISPLAY_NAME, cleanName)
             .putString(KEY_PROFILE_EMAIL, cleanEmail)
+            .apply {
+                if (cleanPhoto != null) putString(KEY_PROFILE_PHOTO_URI, cleanPhoto)
+            }
             .putBoolean(KEY_HAS_COMPLETED_ONBOARDING_AUTH, true)
             .putBoolean(KEY_IS_SIGNED_IN, true)
             .putString(KEY_AUTH_PROVIDER, "EMAIL")
             .apply()
         _profileDisplayName.value = cleanName
         _profileEmail.value = cleanEmail
+        if (cleanPhoto != null) {
+            _profilePhotoUri.value = resolvedPhoto
+        }
         _hasCompletedOnboardingAuth.value = true
         _isSignedIn.value = true
         _authProvider.value = "EMAIL"
@@ -478,7 +497,8 @@ class AppPreferences(context: Context) {
             "kushwanta_mind_arena_prefs",
             "metal_card_vault_prefs",
             "warranty_vault_prefs",
-            "impulse_cooldown_prefs"
+            "impulse_cooldown_prefs",
+            "koshvanta_champions_prefs"
         ).forEach { prefName ->
             runCatching {
                 appCtx.getSharedPreferences(prefName, Context.MODE_PRIVATE).edit().clear().commit()

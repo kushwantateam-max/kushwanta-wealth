@@ -85,6 +85,7 @@ import com.example.domain.util.BiometricHelper
 import com.example.ui.theme.DarkCanvasBg
 import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.NeonMint
 import com.example.ui.theme.StateGreen
 import com.example.ui.theme.StateRed
@@ -106,6 +107,17 @@ fun LockScreenOverlay(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val isDark = LocalIsDarkTheme.current
+    val accent = if (isDark) NeonMint else LocalAccentColor.current
+    val bgColors = if (isDark) {
+        listOf(DarkCanvasBg, Color(0xFF0E131D), DarkCanvasBg)
+    } else {
+        listOf(Color(0xFFE8EEF5), Color(0xFFF8FAFC), Color(0xFFE8EEF5))
+    }
+    val titleColor = if (isDark) Color.White else Color(0xFF0F172A)
+    val subtitleColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+    val dotEmptyColor = if (isDark) Color.White.copy(alpha = 0.16f) else Color(0xFFCBD5E1)
+    val keyBgColor = if (isDark) DarkSurfaceElevated else Color(0xFFFFFFFF)
     var enteredPin by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
@@ -142,7 +154,7 @@ fun LockScreenOverlay(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(DarkCanvasBg, Color(0xFF0E131D), DarkCanvasBg)
+                    colors = bgColors
                 )
             )
             .systemBarsPadding()
@@ -158,28 +170,28 @@ fun LockScreenOverlay(
                 modifier = Modifier
                     .size(76.dp)
                     .clip(CircleShape)
-                    .background(NeonMint.copy(alpha = 0.14f))
-                    .border(1.5.dp, NeonMint.copy(alpha = 0.55f), CircleShape),
+                    .background(accent.copy(alpha = 0.14f))
+                    .border(1.5.dp, accent.copy(alpha = 0.55f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = "Locked",
-                    tint = NeonMint,
+                    tint = accent,
                     modifier = Modifier.size(36.dp)
                 )
             }
 
             Text(
                 text = "KOSHVANTA SHIELD",
-                color = Color.White,
+                color = titleColor,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.5.sp
             )
             Text(
                 text = "Enter your 4-Digit Master PIN to unlock ledger",
-                color = Color(0xFF94A3B8),
+                color = subtitleColor,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
             )
@@ -192,10 +204,10 @@ fun LockScreenOverlay(
                         modifier = Modifier
                             .size(18.dp)
                             .clip(CircleShape)
-                            .background(if (filled) NeonMint else Color.White.copy(alpha = 0.16f))
+                            .background(if (filled) accent else dotEmptyColor)
                             .border(
                                 1.dp,
-                                if (filled) NeonMint else NeonMint.copy(alpha = 0.35f),
+                                if (filled) accent else accent.copy(alpha = 0.35f),
                                 CircleShape
                             )
                             .testTag("pin_dot_$idx")
@@ -269,11 +281,15 @@ fun LockScreenOverlay(
                                     }
                                 },
                                 shape = CircleShape,
-                                color = DarkSurfaceElevated,
+                                color = keyBgColor,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isBioKey && isBiometricEnabled) NeonMint.copy(alpha = 0.45f)
-                                    else NeonMint.copy(alpha = 0.22f)
+                                    when {
+                                        isDark && isBioKey && isBiometricEnabled -> NeonMint.copy(alpha = 0.45f)
+                                        isDark -> NeonMint.copy(alpha = 0.22f)
+                                        isBioKey && isBiometricEnabled -> accent.copy(alpha = 0.45f)
+                                        else -> Color(0xFFE2E8F0)
+                                    }
                                 ),
                                 modifier = Modifier
                                     .size(72.dp)
@@ -290,17 +306,17 @@ fun LockScreenOverlay(
                                         "DEL" -> Icon(
                                             imageVector = Icons.AutoMirrored.Filled.Backspace,
                                             contentDescription = "Backspace",
-                                            tint = Color.White
+                                            tint = titleColor
                                         )
                                         "BIO" -> Icon(
                                             imageVector = Icons.Default.Fingerprint,
                                             contentDescription = "Biometric Unlock",
-                                            tint = if (isBiometricEnabled) NeonMint else Color.White.copy(alpha = 0.4f),
+                                            tint = if (isBiometricEnabled) accent else if (isDark) Color.White.copy(alpha = 0.4f) else Color(0xFF94A3B8),
                                             modifier = Modifier.size(30.dp)
                                         )
                                         else -> Text(
                                             text = key,
-                                            color = Color.White,
+                                            color = titleColor,
                                             fontSize = 24.sp,
                                             fontWeight = FontWeight.Bold
                                         )
