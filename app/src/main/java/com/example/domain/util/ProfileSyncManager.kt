@@ -1,19 +1,34 @@
 package com.example.domain.util
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import com.example.R
 import com.example.data.prefs.AppPreferences
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -21,13 +36,12 @@ import kotlin.coroutines.resume
 
 sealed class GoogleSignInOutcome {
     data class Success(val displayName: String, val email: String) : GoogleSignInOutcome()
-    data class NotConfigured(val message: String) : GoogleSignInOutcome()
     data object Cancelled : GoogleSignInOutcome()
     data class Error(val message: String) : GoogleSignInOutcome()
 }
 
 sealed class EmailAuthOutcome {
-    data class Success(val displayName: String, val email: String, val isLocalFallback: Boolean = false) : EmailAuthOutcome()
+    data class Success(val displayName: String, val email: String) : EmailAuthOutcome()
     data class Error(val message: String) : EmailAuthOutcome()
 }
 
@@ -37,21 +51,35 @@ sealed class PasswordResetOutcome {
 }
 
 /**
- * Crash-proof Firebase Auth & Google Credential Manager sync bridge.
- * Runs 100% safely offline or when Firebase is not yet provisioned (no google-services.json),
- * and auto-hydrates Gmail displayName, email, and photoUrl once Firebase Auth is connected.
+ * Live Firebase Authentication & Jetpack Credential Manager Google Sign-In bridge.
+ * Auto-hydrates Gmail displayName, email, and profile photoUrl across Profile Hub & Leaderboard.
  */
 object ProfileSyncManager {
 
-    fun isFirebaseAvailable(context: Context): Boolean = runCatching {
-        if (FirebaseApp.getApps(context).isNotEmpty()) {
-            true
-        } else {
-            FirebaseApp.initializeApp(context) != null
-        }
-    }.getOrDefault(false)
+    private const val TAG = "ProfileSyncManager"
 
-    private fun extractBestPhotoUrl(user: com.google.firebase.auth.FirebaseUser?): String? {
+    private tailrec fun Context.findActivity(): Activity? = when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
+
+    fun isFirebaseAvailable(context: Context): Boolean = ensureFirebaseInitialized(context) != null
+
+    private fun ensureFirebaseInitialized(context: Context): FirebaseApp? {
+        val appCtx = context.applicationContext ?: context
+        return runCatching {
+            FirebaseApp.getApps(appCtx).firstOrNull()
+                ?: FirebaseApp.initializeApp(appCtx)
+                ?: FirebaseOptions.fromResource(appCtx)?.let { options ->
+                    FirebaseApp.initializeApp(appCtx, options)
+                }
+        }.onFailure { err ->
+            Log.e(TAG, "Firebase initialization error", err)
+        }.getOrNull()
+    }
+
+    private fun extractBestPhotoUrl(user: FirebaseUser?): String? {
         if (user == null) return null
         val raw = user.photoUrl?.toString()?.takeIf { it.isNotBlank() }
             ?: user.providerData.firstNotNullOfOrNull { info ->
@@ -87,40 +115,35 @@ object ProfileSyncManager {
 
     suspend fun signInWithGoogle(context: Context, prefs: AppPreferences): GoogleSignInOutcome {
         if (!isFirebaseAvailable(context)) {
-            return GoogleSignInOutcome.NotConfigured(
-                "Google Sync is ready — link your Firebase project to sign in live."
+            return GoogleSignInOutcome.Error(
+                "Authentication service failed to initialize. Please restart the app and try again."
             )
         }
-        val webClientIdRes = context.resources.getIdentifier(
-            "default_web_client_id",
-            "string",
-            context.packageName
-        )
-        val webClientId = if (webClientIdRes != 0) {
-            runCatching { context.getString(webClientIdRes) }.getOrNull().orEmpty().trim()
-        } else ""
+        val webClientId = runCatching {
+            context.getString(R.string.default_web_client_id).trim()
+        }.getOrNull().orEmpty()
 
         if (webClientId.isBlank()) {
-            return GoogleSignInOutcome.NotConfigured(
-                "Google Sign-In Client ID pending Firebase setup. Use Email or Guest mode locally."
+            return GoogleSignInOutcome.Error(
+                "Google Sign-In client configuration missing from app resources."
             )
         }
+
+        val activityContext: Context = context.findActivity() ?: context
 
         return withContext(Dispatchers.Main.immediate) {
             try {
-                val credentialManager = CredentialManager.create(context)
-                val googleIdOption = GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setServerClientId(webClientId)
-                    .setAutoSelectEnabled(false)
-                    .build()
+                val credentialManager = CredentialManager.create(activityContext)
+                val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(
+                    serverClientId = webClientId
+                ).build()
 
                 val request = GetCredentialRequest.Builder()
-                    .addCredentialOption(googleIdOption)
+                    .addCredentialOption(signInWithGoogleOption)
                     .build()
 
                 val result = credentialManager.getCredential(
-                    context = context,
+                    context = activityContext,
                     request = request
                 )
                 val credential = result.credential
@@ -129,11 +152,17 @@ object ProfileSyncManager {
                 ) {
                     val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
                     val firebaseCred = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
-                    val authResultUser = signInFirebaseCredential(firebaseCred)
-                    val name = authResultUser?.displayName
-                        ?: googleCredential.displayName
+                    val firebaseResult = signInFirebaseCredential(firebaseCred)
+                    val authResultUser = firebaseResult.getOrElse { err ->
+                        return@withContext GoogleSignInOutcome.Error(
+                            formatFirebaseAuthError(err, "Google Sign-In failed with Firebase.")
+                        )
+                    }
+                    val name = authResultUser.displayName?.takeIf { it.isNotBlank() }
+                        ?: googleCredential.displayName?.takeIf { it.isNotBlank() }
                         ?: "Koshvanta Member"
-                    val email = authResultUser?.email ?: googleCredential.id
+                    val email = authResultUser.email?.takeIf { it.isNotBlank() }
+                        ?: googleCredential.id
                     val photo = extractBestPhotoUrl(authResultUser)
                         ?: upgradeGooglePhotoResolution(googleCredential.profilePictureUri?.toString())
                     prefs.saveGoogleSyncedProfile(
@@ -144,11 +173,23 @@ object ProfileSyncManager {
                     prefs.markGoogleAuthCompleted()
                     GoogleSignInOutcome.Success(name, email)
                 } else {
-                    GoogleSignInOutcome.Error("Unsupported credential type returned.")
+                    GoogleSignInOutcome.Error("Unsupported credential type returned by Google.")
                 }
-            } catch (_: GetCredentialCancellationException) {
+            } catch (e: GetCredentialCancellationException) {
+                Log.w(TAG, "Google Sign-In cancelled by user: ${e.message}")
                 GoogleSignInOutcome.Cancelled
+            } catch (e: NoCredentialException) {
+                Log.w(TAG, "No Google credential available: ${e.message}", e)
+                GoogleSignInOutcome.Error(
+                    "No Google account found on this device. Add a Google account in device Settings and try again."
+                )
+            } catch (e: GetCredentialException) {
+                Log.e(TAG, "CredentialManager error during Google Sign-In", e)
+                GoogleSignInOutcome.Error(
+                    e.localizedMessage ?: "Google Sign-In could not complete."
+                )
             } catch (t: Throwable) {
+                Log.e(TAG, "Unexpected error during Google Sign-In", t)
                 GoogleSignInOutcome.Error(t.localizedMessage ?: "Google Sign-In could not complete.")
             }
         }
@@ -168,12 +209,7 @@ object ProfileSyncManager {
             return EmailAuthOutcome.Error("Password must be at least 6 characters.")
         }
         if (!isFirebaseAvailable(context)) {
-            prefs.saveEmailSignedInProfile(displayName = null, email = cleanEmail)
-            return EmailAuthOutcome.Success(
-                displayName = prefs.profileDisplayName.value,
-                email = cleanEmail,
-                isLocalFallback = true
-            )
+            return EmailAuthOutcome.Error("Authentication service unavailable. Please check your connection and try again.")
         }
         return suspendCancellableCoroutine { cont ->
             runCatching {
@@ -195,7 +231,11 @@ object ProfileSyncManager {
                     }
                     .addOnFailureListener { err ->
                         if (cont.isActive) {
-                            cont.resume(EmailAuthOutcome.Error(err.localizedMessage ?: "Sign in failed. Please check your credentials."))
+                            cont.resume(
+                                EmailAuthOutcome.Error(
+                                    formatFirebaseAuthError(err, "Sign in failed. Please check your email and password.")
+                                )
+                            )
                         }
                     }
             }.onFailure { err ->
@@ -225,12 +265,7 @@ object ProfileSyncManager {
             return EmailAuthOutcome.Error("Password must be at least 6 characters.")
         }
         if (!isFirebaseAvailable(context)) {
-            prefs.saveEmailSignedInProfile(displayName = cleanName, email = cleanEmail)
-            return EmailAuthOutcome.Success(
-                displayName = cleanName,
-                email = cleanEmail,
-                isLocalFallback = true
-            )
+            return EmailAuthOutcome.Error("Authentication service unavailable. Please check your connection and try again.")
         }
         return suspendCancellableCoroutine { cont ->
             runCatching {
@@ -238,20 +273,31 @@ object ProfileSyncManager {
                     .createUserWithEmailAndPassword(cleanEmail, password)
                     .addOnSuccessListener { res ->
                         val user = res.user
-                        runCatching {
+                        if (user != null) {
                             val profileUpdates = UserProfileChangeRequest.Builder()
                                 .setDisplayName(cleanName)
                                 .build()
-                            user?.updateProfile(profileUpdates)
-                        }
-                        prefs.saveEmailSignedInProfile(displayName = cleanName, email = cleanEmail)
-                        if (cont.isActive) {
-                            cont.resume(EmailAuthOutcome.Success(cleanName, cleanEmail))
+                            user.updateProfile(profileUpdates)
+                                .addOnCompleteListener {
+                                    prefs.saveEmailSignedInProfile(displayName = cleanName, email = cleanEmail)
+                                    if (cont.isActive) {
+                                        cont.resume(EmailAuthOutcome.Success(cleanName, cleanEmail))
+                                    }
+                                }
+                        } else {
+                            prefs.saveEmailSignedInProfile(displayName = cleanName, email = cleanEmail)
+                            if (cont.isActive) {
+                                cont.resume(EmailAuthOutcome.Success(cleanName, cleanEmail))
+                            }
                         }
                     }
                     .addOnFailureListener { err ->
                         if (cont.isActive) {
-                            cont.resume(EmailAuthOutcome.Error(err.localizedMessage ?: "Could not create account."))
+                            cont.resume(
+                                EmailAuthOutcome.Error(
+                                    formatFirebaseAuthError(err, "Could not create account. Please try again.")
+                                )
+                            )
                         }
                     }
             }.onFailure { err ->
@@ -271,9 +317,7 @@ object ProfileSyncManager {
             return PasswordResetOutcome.Error("Enter your email address first to reset your password.")
         }
         if (!isFirebaseAvailable(context)) {
-            return PasswordResetOutcome.Sent(
-                "Password reset is ready — link Firebase to send live reset emails to $cleanEmail."
-            )
+            return PasswordResetOutcome.Error("Password reset unavailable. Please check your connection and try again.")
         }
         return suspendCancellableCoroutine { cont ->
             runCatching {
@@ -286,7 +330,11 @@ object ProfileSyncManager {
                     }
                     .addOnFailureListener { err ->
                         if (cont.isActive) {
-                            cont.resume(PasswordResetOutcome.Error(err.localizedMessage ?: "Unable to send reset email."))
+                            cont.resume(
+                                PasswordResetOutcome.Error(
+                                    formatFirebaseAuthError(err, "Unable to send reset email.")
+                                )
+                            )
                         }
                     }
             }.onFailure { err ->
@@ -298,15 +346,15 @@ object ProfileSyncManager {
     }
 
     suspend fun signOutGoogle(context: Context, prefs: AppPreferences) {
-        if (isFirebaseAvailable(context)) {
-            withContext(Dispatchers.Main.immediate) {
+        withContext(Dispatchers.Main.immediate + NonCancellable) {
+            withTimeoutOrNull(800L) {
+                runCatching {
+                    CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+                }
+            }
+            if (isFirebaseAvailable(context)) {
                 runCatching {
                     FirebaseAuth.getInstance().signOut()
-                }
-                withTimeoutOrNull(800L) {
-                    runCatching {
-                        CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
-                    }
                 }
             }
         }
@@ -315,7 +363,7 @@ object ProfileSyncManager {
 
     suspend fun deleteActiveFirebaseUser(context: Context) {
         if (!isFirebaseAvailable(context)) return
-        withContext(Dispatchers.Main.immediate) {
+        withContext(Dispatchers.Main.immediate + NonCancellable) {
             withTimeoutOrNull(1500L) {
                 suspendCancellableCoroutine { cont ->
                     runCatching {
@@ -333,28 +381,46 @@ object ProfileSyncManager {
                     }
                 }
             }
-            runCatching { FirebaseAuth.getInstance().signOut() }
             withTimeoutOrNull(800L) {
                 runCatching {
                     CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
                 }
             }
+            runCatching { FirebaseAuth.getInstance().signOut() }
         }
     }
 
     private suspend fun signInFirebaseCredential(
-        credential: com.google.firebase.auth.AuthCredential
-    ) = suspendCancellableCoroutine { cont ->
+        credential: AuthCredential
+    ): Result<FirebaseUser> = suspendCancellableCoroutine { cont ->
         runCatching {
             FirebaseAuth.getInstance().signInWithCredential(credential)
                 .addOnSuccessListener { res ->
-                    if (cont.isActive) cont.resume(res.user)
+                    val user = res.user
+                    if (cont.isActive) {
+                        if (user != null) {
+                            cont.resume(Result.success(user))
+                        } else {
+                            cont.resume(Result.failure(IllegalStateException("Firebase sign-in returned no user.")))
+                        }
+                    }
                 }
-                .addOnFailureListener {
-                    if (cont.isActive) cont.resume(null)
+                .addOnFailureListener { err ->
+                    Log.e(TAG, "Firebase signInWithCredential failed", err)
+                    if (cont.isActive) cont.resume(Result.failure(err))
                 }
-        }.onFailure {
-            if (cont.isActive) cont.resume(null)
+        }.onFailure { err ->
+            Log.e(TAG, "Firebase signInWithCredential exception", err)
+            if (cont.isActive) cont.resume(Result.failure(err))
         }
+    }
+
+    private fun formatFirebaseAuthError(err: Throwable, fallback: String): String = when (err) {
+        is FirebaseNetworkException -> "Network error. Please check your internet connection and try again."
+        is FirebaseAuthWeakPasswordException -> "Password is too weak. Use at least 6 characters."
+        is FirebaseAuthUserCollisionException -> "An account with this email already exists. Try signing in instead."
+        is FirebaseAuthInvalidUserException -> "No account found with this email address."
+        is FirebaseAuthInvalidCredentialsException -> "Invalid email or password. Please try again."
+        else -> err.localizedMessage?.takeIf { it.isNotBlank() } ?: fallback
     }
 }

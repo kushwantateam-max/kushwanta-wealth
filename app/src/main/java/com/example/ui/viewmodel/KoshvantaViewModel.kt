@@ -550,20 +550,25 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun signInWithGoogle(activityContext: Context) {
+    fun signInWithGoogle(
+        activityContext: Context,
+        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
         viewModelScope.launch {
             when (val outcome = ProfileSyncManager.signInWithGoogle(activityContext, prefs)) {
                 is GoogleSignInOutcome.Success -> {
+                    refreshLeaderboardState()
                     SoundEffectManager.playAchievementChime()
                     _toastMessage.value = "Signed in as ${outcome.displayName}"
+                    onComplete(true, null)
                 }
-                is GoogleSignInOutcome.NotConfigured -> {
-                    _toastMessage.value = outcome.message
+                GoogleSignInOutcome.Cancelled -> {
+                    onComplete(false, null)
                 }
-                GoogleSignInOutcome.Cancelled -> Unit
                 is GoogleSignInOutcome.Error -> {
                     SoundEffectManager.playErrorTone()
                     _toastMessage.value = outcome.message
+                    onComplete(false, outcome.message)
                 }
             }
         }
@@ -1709,12 +1714,9 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             when (val outcome = ProfileSyncManager.signInWithEmail(context, email, password, prefs)) {
                 is EmailAuthOutcome.Success -> {
+                    refreshLeaderboardState()
                     SoundEffectManager.playSuccessChime()
-                    val msg = if (outcome.isLocalFallback) {
-                        "Signed in locally as ${outcome.displayName} (Firebase-ready)"
-                    } else {
-                        "Welcome back, ${outcome.displayName}!"
-                    }
+                    val msg = "Welcome back, ${outcome.displayName}!"
                     _toastMessage.value = msg
                     onComplete(true, msg)
                 }
@@ -1736,12 +1738,9 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             when (val outcome = ProfileSyncManager.createAccountWithEmail(context, fullName, email, password, prefs)) {
                 is EmailAuthOutcome.Success -> {
+                    refreshLeaderboardState()
                     SoundEffectManager.playSuccessChime()
-                    val msg = if (outcome.isLocalFallback) {
-                        "Account created locally for ${outcome.displayName} (Firebase-ready)"
-                    } else {
-                        "Account created! Welcome, ${outcome.displayName}"
-                    }
+                    val msg = "Account created! Welcome, ${outcome.displayName}"
                     _toastMessage.value = msg
                     onComplete(true, msg)
                 }

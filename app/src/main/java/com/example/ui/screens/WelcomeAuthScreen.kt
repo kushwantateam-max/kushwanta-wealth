@@ -272,8 +272,15 @@ fun WelcomeAuthScreen(
             Surface(
                 onClick = {
                     if (!isBusy) {
+                        isBusy = true
                         feedbackMessage = null
-                        viewModel.signInWithGoogle(context)
+                        viewModel.signInWithGoogle(context) { ok, errMsg ->
+                            isBusy = false
+                            if (!ok && !errMsg.isNullOrBlank()) {
+                                isFeedbackError = true
+                                feedbackMessage = errMsg
+                            }
+                        }
                     }
                 },
                 shape = RoundedCornerShape(16.dp),
@@ -295,13 +302,46 @@ fun WelcomeAuthScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    GoogleGLogo(modifier = Modifier.size(22.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
+                    if (isBusy && !isEmailExpanded) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF0F172A),
+                            strokeWidth = 2.2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Signing in with Google…",
+                            color = Color(0xFF0F172A),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        GoogleGLogo(modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Continue with Google",
+                            color = Color(0xFF0F172A),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            if (!isEmailExpanded && !feedbackMessage.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = (if (isFeedbackError) StateRed else StateGreen).copy(alpha = 0.14f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
-                        text = "Continue with Google",
-                        color = Color(0xFF0F172A),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        text = feedbackMessage!!,
+                        color = if (isFeedbackError) StateRed else StateGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                 }
             }

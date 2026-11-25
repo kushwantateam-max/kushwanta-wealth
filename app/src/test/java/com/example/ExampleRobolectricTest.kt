@@ -2286,10 +2286,10 @@ class ExampleRobolectricTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val prefs = AppPreferences(context)
 
-        // Crash-proof sync when FirebaseApp is not provisioned
+        // Crash-proof sync when CredentialManager / FirebaseAuth is unavailable in headless test
         assertFalse(ProfileSyncManager.syncCurrentFirebaseUser(context, prefs))
         val signInOutcome = ProfileSyncManager.signInWithGoogle(context, prefs)
-        assertTrue(signInOutcome is GoogleSignInOutcome.NotConfigured)
+        assertTrue(signInOutcome is GoogleSignInOutcome.Error)
 
         // Local editable profile persistence across restart
         prefs.updateEditableProfile(
