@@ -12,6 +12,7 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.data.prefs.AppPreferences
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
@@ -56,6 +57,8 @@ sealed class PasswordResetOutcome {
 object ProfileSyncManager {
 
     private const val TAG = "ProfileSyncManager"
+    private const val VERIFIED_WEB_CLIENT_ID =
+        "505474542383-vfs77nsjvcfn8rvrl54s294aqp24ceg3.apps.googleusercontent.com"
 
     private tailrec fun Context.findActivity(): Activity? = when (this) {
         is Activity -> this
@@ -123,35 +126,47 @@ object ProfileSyncManager {
             "string",
             context.packageName
         )
-        val webClientId = if (webClientIdRes != 0) {
+        val resourceClientId = if (webClientIdRes != 0) {
             runCatching { context.getString(webClientIdRes) }.getOrNull().orEmpty().trim()
         } else {
             ""
         }
-
-        if (webClientId.isBlank()) {
-            return GoogleSignInOutcome.Error(
-                "Google Sign-In client configuration missing from app/google-services.json."
-            )
-        }
+        val webClientId = resourceClientId.ifBlank { VERIFIED_WEB_CLIENT_ID }
 
         val activityContext: Context = context.findActivity() ?: context
 
         return withContext(Dispatchers.Main.immediate) {
             try {
                 val credentialManager = CredentialManager.create(activityContext)
-                val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(
-                    serverClientId = webClientId
-                ).build()
-
-                val request = GetCredentialRequest.Builder()
-                    .addCredentialOption(signInWithGoogleOption)
+                val primaryRequest = GetCredentialRequest.Builder()
+                    .addCredentialOption(
+                        GetSignInWithGoogleOption.Builder(serverClientId = webClientId).build()
+                    )
                     .build()
 
-                val result = credentialManager.getCredential(
-                    context = activityContext,
-                    request = request
-                )
+                val result = try {
+                    credentialManager.getCredential(
+                        context = activityContext,
+                        request = primaryRequest
+                    )
+                } catch (cancel: GetCredentialCancellationException) {
+                    throw cancel
+                } catch (primaryErr: GetCredentialException) {
+                    Log.w(TAG, "Primary GetSignInWithGoogleOption failed, trying GetGoogleIdOption: ${primaryErr.message}")
+                    val fallbackRequest = GetCredentialRequest.Builder()
+                        .addCredentialOption(
+                            GetGoogleIdOption.Builder()
+                                .setFilterByAuthorizedAccounts(false)
+                                .setServerClientId(webClientId)
+                                .setAutoSelectEnabled(false)
+                                .build()
+                        )
+                        .build()
+                    credentialManager.getCredential(
+                        context = activityContext,
+                        request = fallbackRequest
+                    )
+                }
                 val credential = result.credential
                 if (credential is CustomCredential &&
                     credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL

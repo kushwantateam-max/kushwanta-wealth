@@ -522,6 +522,7 @@ class KoshvantaViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch(Dispatchers.IO) {
             val synced = ProfileSyncManager.syncCurrentFirebaseUser(appContext, prefs)
             if (synced) {
+                refreshLeaderboardState()
                 _toastMessage.value = "Gmail profile & photo synced!"
             }
         }
