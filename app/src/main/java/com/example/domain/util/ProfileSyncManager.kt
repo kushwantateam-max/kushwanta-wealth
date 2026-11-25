@@ -11,7 +11,6 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
-import com.example.R
 import com.example.data.prefs.AppPreferences
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -119,13 +118,20 @@ object ProfileSyncManager {
                 "Authentication service failed to initialize. Please restart the app and try again."
             )
         }
-        val webClientId = runCatching {
-            context.getString(R.string.default_web_client_id).trim()
-        }.getOrNull().orEmpty()
+        val webClientIdRes = context.resources.getIdentifier(
+            "default_web_client_id",
+            "string",
+            context.packageName
+        )
+        val webClientId = if (webClientIdRes != 0) {
+            runCatching { context.getString(webClientIdRes) }.getOrNull().orEmpty().trim()
+        } else {
+            ""
+        }
 
         if (webClientId.isBlank()) {
             return GoogleSignInOutcome.Error(
-                "Google Sign-In client configuration missing from app resources."
+                "Google Sign-In client configuration missing from app/google-services.json."
             )
         }
 
